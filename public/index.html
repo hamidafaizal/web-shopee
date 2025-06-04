@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Komisi & Filter CSV</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-top: 70px;
+        }
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+        .main-card {
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            border: none;
+            border-radius: 15px;
+        }
+        .progress-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: conic-gradient(#198754 var(--progress), #e9ecef var(--progress));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            position: relative;
+        }
+        .progress-circle::before {
+            content: '';
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: white;
+        }
+        .progress-text {
+            position: relative;
+            font-size: 24px;
+            font-weight: bold;
+            color: #198754;
+        }
+        .link-item {
+            border-left: 3px solid #198754;
+            transition: all 0.3s;
+        }
+        .link-item:hover {
+            background-color: #f8f9fa;
+            transform: translateX(5px);
+        }
+        .upload-area {
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .upload-area:hover {
+            border-color: #198754;
+            background-color: #f8f9fa;
+        }
+        .upload-area.dragover {
+            border-color: #198754;
+            background-color: #e8f5e9;
+        }
+        .filter-section {
+            background-color: #e8f5e9;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .project-section {
+            display: none;
+        }
+        .project-section.active {
+            display: block;
+        }
+        .nav-pills .nav-link {
+            color: #495057;
+            background-color: #e9ecef;
+            margin-right: 10px;
+        }
+        .nav-pills .nav-link.active {
+            background-color: #198754;
+        }
+        .threshold-edit {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .hp-label-btn {
+            margin: 2px;
+        }
+        .file-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background-color: #f8f9fa;
+            margin-bottom: 5px;
+            border-radius: 5px;
+        }
+        .result-table {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .copy-range-input {
+            display: inline-flex;
+            gap: 5px;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-box-seam"></i> Sistem Komisi
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" onclick="showProject('project1')">
+                            <i class="bi bi-link-45deg"></i> Input Link Komisi
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showProject('project2')">
+                            <i class="bi bi-funnel"></i> Filter CSV
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Project 1: Input Link Komisi -->
+        <div id="project1" class="project-section active">
+            <div class="row justify-content-center">
+                <div class="col-md-10">
+                    <div class="card main-card">
+                        <div class="card-header bg-success text-white py-3">
+                            <h3 class="mb-0"><i class="bi bi-link-45deg"></i> Proyek 1: Input Link Produk Komisi</h3>
+                        </div>
+                        <div class="card-body p-4">
+                            <!-- Alert Container -->
+                            <div id="alertContainer1"></div>
+
+                            <!-- Progress Section -->
+                            <div class="row mb-4">
+                                <div class="col-md-4 text-center">
+                                    <div class="progress-circle" style="--progress: 0%">
+                                        <span class="progress-text" id="progressText">0%</span>
+                                    </div>
+                                    <h5>Link Terkumpul</h5>
+                                    <p class="text-muted"><span id="linkCount">0</span> / <span id="maxLinks">100</span> link</p>
+                                    
+                                    <!-- Edit Threshold -->
+                                    <div class="threshold-edit mt-3">
+                                        <label>Max Link:</label>
+                                        <input type="number" class="form-control form-control-sm" id="thresholdInput" 
+                                               style="width: 80px" min="10" value="100">
+                                        <button class="btn btn-sm btn-primary" onclick="updateThreshold()">
+                                            <i class="bi bi-check"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="alert alert-info">
+                                        <h5><i class="bi bi-info-circle"></i> Informasi</h5>
+                                        <ul class="mb-0">
+                                            <li>Sistem akan otomatis mengirim notifikasi setelah mencapai maksimal link</li>
+                                            <li>Link yang sudah ada akan diabaikan (tidak duplikat)</li>
+                                            <li>Gunakan label HP untuk membedakan batch per device</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tab Navigation -->
+                            <ul class="nav nav-tabs mb-4" role="tablist">
+                                <li class="nav-item">
+                                    <a class="nav-link active" data-bs-toggle="tab" href="#manual">
+                                        <i class="bi bi-pencil-square"></i> Input Manual
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" data-bs-toggle="tab" href="#excel">
+                                        <i class="bi bi-file-earmark-excel"></i> Upload Excel
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" data-bs-toggle="tab" href="#list">
+                                        <i class="bi bi-list-ul"></i> Daftar Link
+                                    </a>
+                                </li>
+                            </ul>
+
+                            <!-- Tab Content -->
+                            <div class="tab-content">
+                                <!-- Manual Input Tab -->
+                                <div class="tab-pane fade show active" id="manual">
+                                    <form id="linkForm">
+                                        <div class="mb-3">
+                                            <label class="form-label">Link Produk <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="bi bi-link"></i></span>
+                                                <input type="url" class="form-control" id="linkInput" 
+                                                       placeholder="https://example.com/product" required>
+                                                <button class="btn btn-success" type="submit">
+                                                    <i class="bi bi-plus-circle"></i> Tambah
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="form-check">
+                                            <input type="checkbox" class="form-check-input" id="komisiCheck" checked>
+                                            <label class="form-check-label" for="komisiCheck">
+                                                Komisi ✅ <small class="text-muted">(Centang jika ada komisi)</small>
+                                            </label>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                <!-- Excel Upload Tab -->
+                                <div class="tab-pane fade" id="excel">
+                                    <div class="upload-area" id="uploadArea">
+                                        <i class="bi bi-cloud-upload" style="font-size: 48px; color: #6c757d;"></i>
+                                        <h5 class="mt-3">Drag & Drop Excel File</h5>
+                                        <p class="text-muted">atau klik untuk memilih file</p>
+                                        <input type="file" id="excelFile" accept=".xlsx,.xls" style="display: none;">
+                                        <button class="btn btn-outline-success" onclick="document.getElementById('excelFile').click()">
+                                            <i class="bi bi-folder2-open"></i> Pilih File
+                                        </button>
+                                    </div>
+                                    <div class="mt-3">
+                                        <small class="text-muted">
+                                            <i class="bi bi-info-circle"></i> Format Excel: Kolom "Link Produk" dan "Komisi ✅"
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <!-- Link List Tab -->
+                                <div class="tab-pane fade" id="list">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h5 class="mb-0">Daftar Link Belum Terkirim</h5>
+                                        <div>
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="loadStatus()">
+                                                <i class="bi bi-arrow-clockwise"></i> Refresh
+                                            </button>
+                                            <button class="btn btn-sm btn-danger" onclick="deleteAllLinks()">
+                                                <i class="bi bi-trash"></i> Delete All
+                                            </button>
+                                            <button class="btn btn-sm btn-info hp-label-btn" onclick="setHPLabel('HP 1')">HP 1</button>
+                                            <button class="btn btn-sm btn-info hp-label-btn" onclick="setHPLabel('HP 2')">HP 2</button>
+                                            <button class="btn btn-sm btn-info hp-label-btn" onclick="setHPLabel('HP 3')">HP 3</button>
+                                        </div>
+                                    </div>
+                                    <div id="linkList" class="list-group" style="max-height: 400px; overflow-y: auto;">
+                                        <!-- Links will appear here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Project 2: Filter CSV -->
+        <div id="project2" class="project-section">
+            <div class="row justify-content-center">
+                <div class="col-md-10">
+                    <div class="card main-card">
+                        <div class="card-header bg-primary text-white py-3">
+                            <h3 class="mb-0"><i class="bi bi-funnel"></i> Proyek 2: Filter & Download CSV</h3>
+                        </div>
+                        <div class="card-body p-4">
+                            <!-- Alert Container -->
+                            <div id="alertContainer2"></div>
+
+                            <div class="filter-section">
+                                <h5><i class="bi bi-gear"></i> Pengaturan Filter</h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Nama Kategori Output</label>
+                                            <input type="text" class="form-control" id="kategoriInput" 
+                                                   placeholder="Contoh: ELEKTRONIK" value="HASIL_FILTER">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Range Ranking (untuk isAd = No)</label>
+                                            <div class="input-group">
+                                                <input type="number" class="form-control" id="rankFrom" 
+                                                       placeholder="Dari" value="1" min="1">
+                                                <span class="input-group-text">-</span>
+                                                <input type="number" class="form-control" id="rankTo" 
+                                                       placeholder="Sampai" value="100" min="1">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="alert alert-warning mt-3">
+                                    <h6><i class="bi bi-filter"></i> Filter yang akan diterapkan:</h6>
+                                    <ol class="mb-0">
+                                        <li>Ambil hanya Tren = "NAIK"</li>
+                                        <li>Produk dengan isAd = "Yes" → Ambil SEMUA</li>
+                                        <li>Produk dengan isAd = "No" → Sort by Penjualan → Ambil ranking sesuai input</li>
+                                        <li>Gabung hasil keduanya</li>
+                                        <li>Hapus duplikat link</li>
+                                    </ol>
+                                </div>
+                            </div>
+                            
+                            <!-- Multiple File Upload Area -->
+                            <div class="upload-area mt-4" id="csvUploadArea">
+                                <i class="bi bi-file-earmark-text" style="font-size: 48px; color: #0d6efd;"></i>
+                                <h5 class="mt-3">Drag & Drop Multiple CSV Files</h5>
+                                <p class="text-muted">atau klik untuk memilih file</p>
+                                <input type="file" id="csvFiles" accept=".csv" multiple style="display: none;">
+                                <button class="btn btn-outline-primary" onclick="document.getElementById('csvFiles').click()">
+                                    <i class="bi bi-folder2-open"></i> Pilih File CSV
+                                </button>
+                            </div>
+
+                            <!-- File List -->
+                            <div id="fileList" class="file-list mt-3" style="display: none;">
+                                <h6>File yang akan diproses:</h6>
+                                <div id="fileListContent"></div>
+                                <button class="btn btn-success mt-3" onclick="processCSVFiles()">
+                                    <i class="bi bi-play-circle"></i> Proses Semua File
+                                </button>
+                            </div>
+
+                            <!-- Results Section -->
+                            <div id="resultsSection" style="display: none;" class="mt-4">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0">Hasil Filter</h5>
+                                        <div>
+                                            <span class="badge bg-success">Produk Iklan: <span id="adCount">0</span></span>
+                                            <span class="badge bg-primary">Top Sales: <span id="salesCount">0</span></span>
+                                            <span class="badge bg-dark">Total: <span id="totalCount">0</span></span>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="result-table">
+                                            <table class="table table-sm table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th width="50">No</th>
+                                                        <th width="50">
+                                                            <input type="checkbox" id="checkAll" onchange="toggleAllCheckboxes()">
+                                                        </th>
+                                                        <th>Link Produk</th>
+                                                        <th width="120">Tipe</th>
+                                                        <th width="120">Sumber</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="resultTableBody">
+                                                    <!-- Results will appear here -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        
+                                        <!-- Action Buttons -->
+                                        <div class="mt-3">
+                                            <div class="copy-range-input mb-2">
+                                                <button class="btn btn-sm btn-secondary" onclick="copyLinks(1, 50)">Copy 1-50</button>
+                                                <button class="btn btn-sm btn-secondary" onclick="copyLinks(51, 100)">Copy 51-100</button>
+                                                <input type="number" id="copyFrom" placeholder="Dari" style="width: 80px" class="form-control form-control-sm">
+                                                <span>-</span>
+                                                <input type="number" id="copyTo" placeholder="Sampai" style="width: 80px" class="form-control form-control-sm">
+                                                <button class="btn btn-sm btn-secondary" onclick="copyCustomRange()">Copy</button>
+                                            </div>
+                                            <button class="btn btn-primary" onclick="downloadExcel()">
+                                                <i class="bi bi-download"></i> Download Excel
+                                            </button>
+                                            <button class="btn btn-success" onclick="sendToProject1()">
+                                                <i class="bi bi-send"></i> Kirim ke Proyek 1
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Konfirmasi Hapus</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    Apakah Anda yakin ingin menghapus semua link yang belum terkirim?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmDeleteAll()">Hapus Semua</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        // API Base URL
+        const API_URL = '/api';
+
+        // Global variables for Project 2
+        let uploadedFiles = [];
+        let filteredResults = [];
+        let currentMaxLinks = 100;
+
+        // Show/hide projects
+        function showProject(projectId) {
+            document.querySelectorAll('.project-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            document.getElementById(projectId).classList.add('active');
+            
+            document.querySelectorAll('.navbar-nav .nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            if (projectId === 'project1') {
+                loadStatus();
+                loadConfig();
+            } else {
+                loadSavedResults();
+            }
+        }
+
+        // Load status on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStatus();
+            loadConfig();
+        });
+
+        // ========== PROJECT 1: Input Link Komisi ==========
+        
+        // Load config
+        async function loadConfig() {
+            try {
+                const response = await fetch(`${API_URL}/config`);
+                const data = await response.json();
+                currentMaxLinks = data.maxLinks || 100;
+                document.getElementById('maxLinks').textContent = currentMaxLinks;
+                document.getElementById('thresholdInput').value = currentMaxLinks;
+            } catch (error) {
+                console.error('Error loading config:', error);
+            }
+        }
+
+        // Update threshold
+        async function updateThreshold() {
+            const newThreshold = parseInt(document.getElementById('thresholdInput').value);
+            if (newThreshold < 10) {
+                showAlert('danger', 'Minimal threshold adalah 10', 'alertContainer1');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/config`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ maxLinks: newThreshold })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    currentMaxLinks = newThreshold;
+                    document.getElementById('maxLinks').textContent = currentMaxLinks;
+                    showAlert('success', 'Threshold berhasil diupdate', 'alertContainer1');
+                    loadStatus();
+                }
+            } catch (error) {
+                showAlert('danger', 'Gagal update threshold', 'alertContainer1');
+            }
+        }
+
+        // Delete all links
+        function deleteAllLinks() {
+            const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            modal.show();
+        }
+
+        async function confirmDeleteAll() {
+            try {
+                const response = await fetch(`${API_URL}/links/delete-all`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showAlert('success', 'Semua link berhasil dihapus', 'alertContainer1');
+                    bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+                    loadStatus();
+                }
+            } catch (error) {
+                showAlert('danger', 'Gagal menghapus link', 'alertContainer1');
+            }
+        }
+
+        // Set HP Label
+        async function setHPLabel(label) {
+            try {
+                const response = await fetch(`${API_URL}/links/set-label`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ label })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showAlert('success', `Label ${label} berhasil diterapkan`, 'alertContainer1');
+                    loadStatus();
+                }
+            } catch (error) {
+                showAlert('danger', 'Gagal set label HP', 'alertContainer1');
+            }
+        }
+
+        // Manual input form
+        document.getElementById('linkForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const link = document.getElementById('linkInput').value;
+            const komisi = document.getElementById('komisiCheck').checked;
+            
+            try {
+                const response = await fetch(`${API_URL}/links`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ link, komisi })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('success', result.message, 'alertContainer1');
+                    document.getElementById('linkInput').value = '';
+                    loadStatus();
+                } else {
+                    showAlert('danger', result.error || 'Terjadi kesalahan', 'alertContainer1');
+                }
+            } catch (error) {
+                showAlert('danger', 'Gagal menghubungi server', 'alertContainer1');
+            }
+        });
+
+        // Excel upload - Drag & Drop
+        const uploadArea = document.getElementById('uploadArea');
+        const excelFile = document.getElementById('excelFile');
+
+        uploadArea.addEventListener('click', () => excelFile.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleExcelUpload(files[0]);
+            }
+        });
+
+        excelFile.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleExcelUpload(e.target.files[0]);
+            }
+        });
+
+        async function handleExcelUpload(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            showAlert('info', 'Mengupload file...', 'alertContainer1', false);
+            
+            try {
+                const response = await fetch(`${API_URL}/upload-excel`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('success', result.message, 'alertContainer1');
+                    loadStatus();
+                } else {
+                    showAlert('danger', result.error || 'Gagal memproses file', 'alertContainer1');
+                }
+            } catch (error) {
+                showAlert('danger', 'Gagal mengupload file', 'alertContainer1');
+            }
+        }
+
+        async function loadStatus() {
+            try {
+                const response = await fetch(`${API_URL}/status`);
+                const data = await response.json();
+                
+                // Update progress
+                const percentage = Math.round((data.count / currentMaxLinks) * 100);
+                document.getElementById('linkCount').textContent = data.count;
+                document.getElementById('progressText').textContent = percentage + '%';
+                document.querySelector('.progress-circle').style.setProperty('--progress', percentage + '%');
+                
+                // Update link list
+                const linkList = document.getElementById('linkList');
+                if (data.links.length === 0) {
+                    linkList.innerHTML = '<div class="text-center text-muted py-4">Belum ada link</div>';
+                } else {
+                    linkList.innerHTML = data.links.map((item, index) => `
+                        <div class="list-group-item link-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <small class="text-muted">#${index + 1}</small>
+                                    ${item.hp_label ? `<span class="badge bg-info ms-2">${item.hp_label}</span>` : ''}
+                                    <div class="text-truncate" style="max-width: 500px;">
+                                        <i class="bi bi-link-45deg text-success"></i> ${item.link_produk}
+                                    </div>
+                                </div>
+                                <a href="${item.link_produk}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                // Show notification if ready
+                if (data.count >= currentMaxLinks) {
+                    showAlert('warning', `Link sudah mencapai ${currentMaxLinks}! Notifikasi akan segera dikirim.`, 'alertContainer1');
+                }
+            } catch (error) {
+                console.error('Error loading status:', error);
+            }
+        }
+
+        // ========== PROJECT 2: Filter CSV ==========
+        
+        // CSV upload - Multiple files
+        const csvUploadArea = document.getElementById('csvUploadArea');
+        const csvFiles = document.getElementById('csvFiles');
+
+        csvUploadArea.addEventListener('click', () => csvFiles.click());
+
+        csvUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            csvUploadArea.classList.add('dragover');
+        });
+
+        csvUploadArea.addEventListener('dragleave', () => {
+            csvUploadArea.classList.remove('dragover');
+        });
+
+        csvUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            csvUploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleCSVFiles(files);
+            }
+        });
+
+        csvFiles.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleCSVFiles(e.target.files);
+            }
+        });
+
+        function handleCSVFiles(files) {
+            uploadedFiles = Array.from(files);
+            displayFileList();
+        }
+
+        function displayFileList() {
+            const fileList = document.getElementById('fileList');
+            const fileListContent = document.getElementById('fileListContent');
+            
+            fileList.style.display = 'block';
+            fileListContent.innerHTML = uploadedFiles.map((file, index) => `
+                <div class="file-item">
+                    <span><i class="bi bi-file-earmark-text"></i> ${file.name}</span>
+                    <button class="btn btn-sm btn-danger" onclick="removeFile(${index})">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function removeFile(index) {
+            uploadedFiles.splice(index, 1);
+            if (uploadedFiles.length === 0) {
+                document.getElementById('fileList').style.display = 'none';
+            } else {
+                displayFileList();
+            }
+        }
+
+        async function processCSVFiles() {
+            if (uploadedFiles.length === 0) {
+                showAlert('danger', 'Tidak ada file untuk diproses', 'alertContainer2');
+                return;
+            }
+
+            const formData = new FormData();
+            uploadedFiles.forEach(file => {
+                formData.append('files', file);
+            });
+            formData.append('kategori', document.getElementById('kategoriInput').value || 'HASIL_FILTER');
+            formData.append('rankFrom', document.getElementById('rankFrom').value || 1);
+            formData.append('rankTo', document.getElementById('rankTo').value || 100);
+            
+            showAlert('info', 'Memproses file CSV...', 'alertContainer2', false);
+            
+            try {
+                const response = await fetch(`${API_URL}/filter-csv-multiple`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('success', result.message, 'alertContainer2');
+                    filteredResults = result.results;
+                    displayResults(result);
+                    saveResultsToStorage(result);
+                } else {
+                    showAlert('danger', result.error || 'Gagal memproses file', 'alertContainer2');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('danger', 'Gagal memproses file CSV', 'alertContainer2');
+            }
+        }
+
+        function displayResults(result) {
+            document.getElementById('resultsSection').style.display = 'block';
+            document.getElementById('adCount').textContent = result.adCount || 0;
+            document.getElementById('salesCount').textContent = result.salesCount || 0;
+            document.getElementById('totalCount').textContent = result.totalCount || 0;
+            
+            const tbody = document.getElementById('resultTableBody');
+            tbody.innerHTML = result.results.map((item, index) => `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>
+                        <input type="checkbox" class="result-checkbox" data-index="${index}" 
+                               ${item.checked ? 'checked' : ''} onchange="updateCheckState(${index})">
+                    </td>
+                    <td>${item.link}</td>
+                    <td>
+                        <span class="badge ${item.type === 'Iklan' ? 'bg-success' : 'bg-primary'}">
+                            ${item.type}
+                        </span>
+                    </td>
+                    <td><small>${item.source}</small></td>
+                </tr>
+            `).join('');
+        }
+
+        function toggleAllCheckboxes() {
+            const checkAll = document.getElementById('checkAll').checked;
+            const checkboxes = document.querySelectorAll('.result-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = checkAll;
+                const index = parseInt(cb.dataset.index);
+                filteredResults[index].checked = checkAll;
+            });
+            saveResultsToStorage();
+        }
+
+        function updateCheckState(index) {
+            const checkbox = document.querySelector(`[data-index="${index}"]`);
+            if (checkbox) {
+                filteredResults[index].checked = checkbox.checked;
+                saveResultsToStorage();
+                console.log(`Updated check state for index ${index}:`, filteredResults[index].checked);
+            }
+        }
+
+        function copyLinks(from, to) {
+            const links = [];
+            for (let i = from - 1; i < Math.min(to, filteredResults.length); i++) {
+                if (filteredResults[i]) {
+                    links.push(filteredResults[i].link);
+                }
+            }
+            
+            if (links.length > 0) {
+                navigator.clipboard.writeText(links.join('\n')).then(() => {
+                    showAlert('success', `${links.length} link berhasil dicopy`, 'alertContainer2');
+                });
+            }
+        }
+
+        function copyCustomRange() {
+            const from = parseInt(document.getElementById('copyFrom').value);
+            const to = parseInt(document.getElementById('copyTo').value);
+            
+            if (!from || !to || from > to) {
+                showAlert('danger', 'Range tidak valid', 'alertContainer2');
+                return;
+            }
+            
+            copyLinks(from, to);
+        }
+
+        async function downloadExcel() {
+            if (filteredResults.length === 0) {
+                showAlert('danger', 'Tidak ada data untuk didownload', 'alertContainer2');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/generate-excel`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        results: filteredResults,
+                        kategori: document.getElementById('kategoriInput').value || 'HASIL_FILTER'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.downloadUrl) {
+                    const a = document.createElement('a');
+                    a.href = result.downloadUrl;
+                    a.download = `${result.kategori}.xlsx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    
+                    showAlert('success', 'File Excel berhasil didownload', 'alertContainer2');
+                }
+            } catch (error) {
+                showAlert('danger', 'Gagal generate Excel', 'alertContainer2');
+            }
+        }
+
+        async function sendToProject1() {
+            const checkedItems = filteredResults.filter(item => item.checked);
+            
+            if (checkedItems.length === 0) {
+                showAlert('danger', 'Pilih minimal 1 link untuk dikirim', 'alertContainer2');
+                return;
+            }
+
+            showAlert('info', 'Mengirim ke Proyek 1...', 'alertContainer2', false);
+
+            try {
+                const response = await fetch(`${API_URL}/send-to-project1`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ links: checkedItems })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('success', `${result.added} link berhasil dikirim ke Proyek 1, ${result.skipped} link sudah ada`, 'alertContainer2');
+                    
+                    // Clear checked items from storage
+                    clearStorage();
+                    filteredResults = [];
+                    document.getElementById('resultsSection').style.display = 'none';
+                    
+                    // Reset file upload area
+                    uploadedFiles = [];
+                    document.getElementById('fileList').style.display = 'none';
+                    document.getElementById('csvFiles').value = '';
+                    
+                    // Optional: Switch to Project 1 to see results
+                    setTimeout(() => {
+                        showProject('project1');
+                    }, 2000);
+                } else {
+                    showAlert('danger', result.error || 'Gagal mengirim ke Proyek 1', 'alertContainer2');
+                }
+            } catch (error) {
+                console.error('Error sending to Project 1:', error);
+                showAlert('danger', 'Gagal mengirim ke Proyek 1: ' + error.message, 'alertContainer2');
+            }
+        }
+
+        // Storage functions
+        function saveResultsToStorage(fullResult = null) {
+            const data = {
+                timestamp: new Date().toISOString(),
+                results: filteredResults,
+                fullResult: fullResult
+            };
+            localStorage.setItem('project2_filtered_data', JSON.stringify(data));
+        }
+
+        function loadSavedResults() {
+            const saved = localStorage.getItem('project2_filtered_data');
+            if (saved) {
+                const data = JSON.parse(saved);
+                filteredResults = data.results || [];
+                if (data.fullResult) {
+                    displayResults(data.fullResult);
+                }
+            }
+        }
+
+        function clearStorage() {
+            localStorage.removeItem('project2_filtered_data');
+        }
+
+        function showAlert(type, message, containerId = 'alertContainer1', autoDismiss = true) {
+            const alertContainer = document.getElementById(containerId);
+            const alertId = 'alert-' + Date.now();
+            
+            const alertHtml = `
+                <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'danger' ? 'x-circle' : 'info-circle'}"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            alertContainer.innerHTML = alertHtml;
+            
+            if (autoDismiss) {
+                setTimeout(() => {
+                    const alert = document.getElementById(alertId);
+                    if (alert) {
+                        alert.remove();
+                    }
+                }, 5000);
+            }
+        }
+
+        // Auto refresh every 30 seconds for project 1
+        setInterval(() => {
+            if (document.getElementById('project1').classList.contains('active')) {
+                loadStatus();
+            }
+        }, 30000);
+    </script>
+</body>
+</html>

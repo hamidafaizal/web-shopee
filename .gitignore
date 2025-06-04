@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Firebase credentials
+firebase-credentials.json.json
+
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Temporary files
+temp/
+uploads/
