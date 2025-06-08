@@ -5,8 +5,8 @@ class KomisiLink {
   static async create(data) {
     const connection = getConnection();
     const [result] = await connection.execute(
-      'INSERT INTO komisi_links (link_produk, komisi_flag, hp_label) VALUES (?, ?, ?)',
-      [data.link_produk, data.komisi_flag || true, data.hp_label || null]
+      'INSERT INTO komisi_links (link_produk, komisi_flag, hp_label, batch_number) VALUES (?, ?, ?, ?)',
+      [data.link_produk, data.komisi_flag || true, data.hp_label || null, data.batch_number || 1]
     );
     return result;
   }
@@ -89,16 +89,50 @@ class KomisiLink {
     return result;
   }
   
-  static async getUnsentByLabel(limit) {
+  static async updateBatchLabel(batchNumber, label) {
+    const connection = getConnection();
+    
+    // MariaDB compatible - gunakan subquery
+    const [result] = await connection.execute(
+      `UPDATE komisi_links 
+       SET hp_label = ? 
+       WHERE sent_at IS NULL 
+       AND id IN (
+         SELECT id FROM (
+           SELECT id FROM komisi_links 
+           WHERE sent_at IS NULL 
+           ORDER BY created_at ASC 
+           LIMIT 100
+         ) tmp
+       )`,
+      [label]
+    );
+    return result;
+  }
+
+  static async getByHPLabel(label) {
     const connection = getConnection();
     const [rows] = await connection.execute(
-      `SELECT * FROM komisi_links 
-       WHERE sent_at IS NULL 
-       ORDER BY hp_label, created_at ASC 
-       LIMIT ?`,
-      [limit * 3] // Get more to handle multiple labels
+      'SELECT * FROM komisi_links WHERE hp_label = ? AND sent_at IS NOT NULL ORDER BY created_at DESC',
+      [label]
     );
     return rows;
+  }
+
+  static async markBatchCopied(batchId) {
+    const connection = getConnection();
+    await connection.execute(
+      'UPDATE komisi_links SET copied_at = CURRENT_TIMESTAMP WHERE batch_id = ?',
+      [batchId]
+    );
+  }
+
+  static async deleteBatch(batchId) {
+    const connection = getConnection();
+    await connection.execute(
+      'DELETE FROM komisi_links WHERE batch_id = ?',
+      [batchId]
+    );
   }
 }
 

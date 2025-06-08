@@ -3,485 +3,923 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Komisi & Filter CSV</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>OTOMATIS - Sistem Komisi Cinematic</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
-        body {
-            background-color: #f8f9fa;
-            padding-top: 70px;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .navbar {
-            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        
+        body, html {
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+            background-image: url('https://images.pexels.com/photos/585752/pexels-photo-585752.jpeg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
         }
-        .main-card {
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
-            border: none;
-            border-radius: 15px;
+        
+        .overlay {
+            background-color: rgba(0, 0, 0, 0.7);
+            height: 100%;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0;
         }
-        .progress-circle {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background: conic-gradient(#198754 var(--progress), #e9ecef var(--progress));
+        
+        .content {
+            position: relative;
+            z-index: 2;
+            min-height: 100vh;
+            padding: 2rem 1rem;
             display: flex;
+            flex-direction: column;
             align-items: center;
+        }
+        
+        nav {
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
             justify-content: center;
-            margin: 0 auto 20px;
-            position: relative;
-        }
-        .progress-circle::before {
-            content: '';
-            position: absolute;
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            background: white;
-        }
-        .progress-text {
-            position: relative;
-            font-size: 24px;
-            font-weight: bold;
-            color: #198754;
-        }
-        .link-item {
-            border-left: 3px solid #198754;
-            transition: all 0.3s;
-        }
-        .link-item:hover {
-            background-color: #f8f9fa;
-            transform: translateX(5px);
-        }
-        .upload-area {
-            border: 2px dashed #dee2e6;
+            gap: 2rem;
+            padding: 1rem;
             border-radius: 10px;
-            padding: 30px;
-            text-align: center;
-            transition: all 0.3s;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        nav button {
+            background: none;
+            color: white;
+            border: none;
+            font-size: 1rem;
             cursor: pointer;
+            padding: 0.5rem 1rem;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
         }
-        .upload-area:hover {
-            border-color: #198754;
-            background-color: #f8f9fa;
+        
+        nav button:hover {
+            color: #21cbf3;
         }
-        .upload-area.dragover {
-            border-color: #198754;
-            background-color: #e8f5e9;
+        
+        nav button.active {
+            border-color: #21cbf3;
+            font-weight: bold;
         }
-        .filter-section {
-            background-color: #e8f5e9;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        .project-section {
+        
+        .panel {
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 900px;
             display: none;
+            animation: fadeIn 0.3s ease-in;
         }
-        .project-section.active {
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .panel.active {
             display: block;
         }
-        .nav-pills .nav-link {
-            color: #495057;
-            background-color: #e9ecef;
+        
+        .drop-zone {
+            margin-top: 12px;
+            padding: 40px;
+            border: 2px dashed #aaa;
+            border-radius: 10px;
+            background-color: rgba(255, 255, 255, 0.08);
+            color: #ccc;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .drop-zone:hover {
+            border-color: #21cbf3;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .drop-zone.dragover {
+            background-color: rgba(33, 203, 243, 0.15);
+            border-color: #4caf50;
+            color: #fff;
+        }
+        
+        .drop-zone i {
+            font-size: 48px;
+            display: block;
+            margin-bottom: 10px;
+        }
+        
+        .panel input[type="text"],
+        .panel input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            margin-top: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+            backdrop-filter: blur(5px);
+        }
+        
+        .panel input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .panel button {
+            background: linear-gradient(to right, #2196f3, #21cbf3);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-top: 1.5rem;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+        }
+        
+        .panel button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(33, 203, 243, 0.3);
+        }
+        
+        .panel button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        canvas {
+            max-width: 200px;
+            margin: 0 auto;
+            display: block;
+        }
+        
+        .chart-container {
+            position: relative;
+            text-align: center;
+        }
+        
+        .chart-center-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .scroll-box {
+            max-height: 300px;
+            overflow-y: auto;
+            border-radius: 6px;
+            background-color: rgba(255, 255, 255, 0.02);
+            padding: 1rem;
+            margin-top: 10px;
+        }
+        
+        .scroll-box::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .scroll-box::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        
+        .scroll-box::-webkit-scrollbar-thumb {
+            background: rgba(33, 203, 243, 0.5);
+            border-radius: 4px;
+        }
+        
+        .batch-box {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1rem;
+            border-radius: 10px;
+            background-color: rgba(255, 255, 255, 0.03);
+            margin-bottom: 1rem;
+            backdrop-filter: blur(5px);
+        }
+        
+        .batch-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .batch-header h4 {
+            margin: 0;
+            color: #21cbf3;
+        }
+        
+        select {
+            padding: 8px 12px;
+            border-radius: 6px;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+        }
+        
+        select option {
+            background-color: #333;
+        }
+        
+        ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        
+        ul li {
+            padding: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        ul li:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .link-number {
+            color: #21cbf3;
+            font-weight: bold;
             margin-right: 10px;
         }
-        .nav-pills .nav-link.active {
-            background-color: #198754;
-        }
-        .threshold-edit {
-            display: inline-flex;
+        
+        .alert {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
             align-items: center;
             gap: 10px;
+            animation: slideIn 0.3s ease-out;
         }
-        .hp-label-btn {
-            margin: 2px;
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
+        
+        .alert-success {
+            background-color: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+        }
+        
+        .alert-danger {
+            background-color: rgba(244, 67, 54, 0.2);
+            border: 1px solid rgba(244, 67, 54, 0.5);
+        }
+        
+        .alert-info {
+            background-color: rgba(33, 150, 243, 0.2);
+            border: 1px solid rgba(33, 150, 243, 0.5);
+        }
+        
         .file-list {
-            max-height: 200px;
-            overflow-y: auto;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
         }
+        
         .file-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px;
-            background-color: #f8f9fa;
+            padding: 10px;
             margin-bottom: 5px;
-            border-radius: 5px;
+            background-color: rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
         }
-        .result-table {
-            max-height: 500px;
-            overflow-y: auto;
+        
+        .file-item button {
+            background: rgba(244, 67, 54, 0.8);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
         }
-        .copy-range-input {
-            display: inline-flex;
-            gap: 5px;
-            align-items: center;
+        
+        .stats-row {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            gap: 20px;
+        }
+        
+        .stat-box {
+            flex: 1;
+            text-align: center;
+            padding: 15px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .stat-box h3 {
+            margin: 0;
+            font-size: 28px;
+            color: #21cbf3;
+        }
+        
+        .stat-box p {
+            margin: 5px 0 0 0;
+            opacity: 0.8;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .action-buttons button {
+            flex: 1;
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(to right, #607d8b, #78909c) !important;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(to right, #f44336, #e91e63) !important;
+        }
+        
+        @media (max-width: 600px) {
+            nav {
+                flex-direction: column;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            
+            .panel {
+                padding: 1.5rem;
+            }
+            
+            .stats-row {
+                flex-direction: column;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-        <div class="container">
-            <a class="navbar-brand" href="#">
-                <i class="bi bi-box-seam"></i> Sistem Komisi
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
+    <div class="overlay"></div>
+    <div class="content">
+        <h1 style="margin-bottom: 1rem; text-align: center;">
+            <i class="bi bi-lightning-charge"></i> Ayo Cari Produk Winning!
+        </h1>
+        
+        <nav>
+            <button class="tab-btn active" data-tab="upload">
+                <i class="bi bi-cloud-upload"></i> Upload File Riset
             </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="#" onclick="showProject('project1')">
-                            <i class="bi bi-link-45deg"></i> Input Link Komisi
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="showProject('project2')">
-                            <i class="bi bi-funnel"></i> Filter CSV
-                        </a>
-                    </li>
-                </ul>
+            <button class="tab-btn" data-tab="filter">
+                <i class="bi bi-filter-circle"></i> Filter Komisi
+            </button>
+        </nav>
+
+        <!-- Alert Container -->
+        <div id="alertContainer" style="width: 100%; max-width: 900px;"></div>
+
+        <!-- Upload Panel -->
+        <div class="panel active" id="upload">
+            <h2><i class="bi bi-file-earmark-text"></i> Upload File Riset</h2>
+            
+            <input type="text" id="kategoriInput" placeholder="Nama Kategori (contoh: ELEKTRONIK)" value="HASIL_FILTER" />
+            
+            <div class="stats-row">
+                <div class="stat-box">
+                    <h3 id="rankFrom">1</h3>
+                    <p>Rank Dari</p>
+                </div>
+                <div class="stat-box">
+                    <h3 id="rankTo">100</h3>
+                    <p>Rank Sampai</p>
+                </div>
             </div>
-        </div>
-    </nav>
-
-    <div class="container mt-4">
-        <!-- Project 1: Input Link Komisi -->
-        <div id="project1" class="project-section active">
-            <div class="row justify-content-center">
-                <div class="col-md-10">
-                    <div class="card main-card">
-                        <div class="card-header bg-success text-white py-3">
-                            <h3 class="mb-0"><i class="bi bi-link-45deg"></i> Proyek 1: Input Link Produk Komisi</h3>
+            
+            <input type="number" id="rankFromInput" placeholder="Ranking dari (default: 1)" value="1" min="1" />
+            <input type="number" id="rankToInput" placeholder="Ranking sampai (default: 100)" value="100" min="1" />
+            
+            <div class="drop-zone" id="dropZone">
+                <i class="bi bi-file-earmark-csv"></i>
+                <div>Tarik file CSV ke sini atau klik untuk memilih</div>
+                <small>Support multiple files</small>
+                <input type="file" id="csvFiles" accept=".csv" multiple hidden />
+            </div>
+            
+            <div id="fileList" class="file-list" style="display: none;">
+                <h5>File yang akan diproses:</h5>
+                <div id="fileListContent"></div>
+            </div>
+            
+            <button id="processBtn" onclick="processCSVFiles()">
+                <i class="bi bi-gear"></i> Proses
+            </button>
+            
+            <!-- Results Section -->
+            <div id="resultsSection" style="display: none; margin-top: 30px;">
+                <div style="border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; padding: 20px; background-color: rgba(255,255,255,0.03);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h4 style="margin: 0;">Hasil Filter</h4>
+                        <div style="display: flex; gap: 10px;">
+                            <span style="background: rgba(76,175,80,0.2); padding: 5px 15px; border-radius: 20px;">
+                                <i class="bi bi-megaphone"></i> Iklan: <strong id="adCount">0</strong>
+                            </span>
+                            <span style="background: rgba(33,150,243,0.2); padding: 5px 15px; border-radius: 20px;">
+                                <i class="bi bi-graph-up"></i> Top Sales: <strong id="salesCount">0</strong>
+                            </span>
+                            <span style="background: rgba(255,193,7,0.2); padding: 5px 15px; border-radius: 20px;">
+                                <i class="bi bi-check-all"></i> Total: <strong id="totalCount">0</strong>
+                            </span>
                         </div>
-                        <div class="card-body p-4">
-                            <!-- Alert Container -->
-                            <div id="alertContainer1"></div>
-
-                            <!-- Progress Section -->
-                            <div class="row mb-4">
-                                <div class="col-md-4 text-center">
-                                    <div class="progress-circle" style="--progress: 0%">
-                                        <span class="progress-text" id="progressText">0%</span>
-                                    </div>
-                                    <h5>Link Terkumpul</h5>
-                                    <p class="text-muted"><span id="linkCount">0</span> / <span id="maxLinks">100</span> link</p>
-                                    
-                                    <!-- Edit Threshold -->
-                                    <div class="threshold-edit mt-3">
-                                        <label>Max Link:</label>
-                                        <input type="number" class="form-control form-control-sm" id="thresholdInput" 
-                                               style="width: 80px" min="10" value="100">
-                                        <button class="btn btn-sm btn-primary" onclick="updateThreshold()">
-                                            <i class="bi bi-check"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="col-md-8">
-                                    <div class="alert alert-info">
-                                        <h5><i class="bi bi-info-circle"></i> Informasi</h5>
-                                        <ul class="mb-0">
-                                            <li>Sistem akan otomatis mengirim notifikasi setelah mencapai maksimal link</li>
-                                            <li>Link yang sudah ada akan diabaikan (tidak duplikat)</li>
-                                            <li>Gunakan label HP untuk membedakan batch per device</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Tab Navigation -->
-                            <ul class="nav nav-tabs mb-4" role="tablist">
-                                <li class="nav-item">
-                                    <a class="nav-link active" data-bs-toggle="tab" href="#manual">
-                                        <i class="bi bi-pencil-square"></i> Input Manual
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" data-bs-toggle="tab" href="#excel">
-                                        <i class="bi bi-file-earmark-excel"></i> Upload Excel
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" data-bs-toggle="tab" href="#list">
-                                        <i class="bi bi-list-ul"></i> Daftar Link
-                                    </a>
-                                </li>
-                            </ul>
-
-                            <!-- Tab Content -->
-                            <div class="tab-content">
-                                <!-- Manual Input Tab -->
-                                <div class="tab-pane fade show active" id="manual">
-                                    <form id="linkForm">
-                                        <div class="mb-3">
-                                            <label class="form-label">Link Produk <span class="text-danger">*</span></label>
-                                            <div class="input-group">
-                                                <span class="input-group-text"><i class="bi bi-link"></i></span>
-                                                <input type="url" class="form-control" id="linkInput" 
-                                                       placeholder="https://example.com/product" required>
-                                                <button class="btn btn-success" type="submit">
-                                                    <i class="bi bi-plus-circle"></i> Tambah
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="form-check">
-                                            <input type="checkbox" class="form-check-input" id="komisiCheck" checked>
-                                            <label class="form-check-label" for="komisiCheck">
-                                                Komisi ✅ <small class="text-muted">(Centang jika ada komisi)</small>
-                                            </label>
-                                        </div>
-                                    </form>
-                                </div>
-
-                                <!-- Excel Upload Tab -->
-                                <div class="tab-pane fade" id="excel">
-                                    <div class="upload-area" id="uploadArea">
-                                        <i class="bi bi-cloud-upload" style="font-size: 48px; color: #6c757d;"></i>
-                                        <h5 class="mt-3">Drag & Drop Excel File</h5>
-                                        <p class="text-muted">atau klik untuk memilih file</p>
-                                        <input type="file" id="excelFile" accept=".xlsx,.xls" style="display: none;">
-                                        <button class="btn btn-outline-success" onclick="document.getElementById('excelFile').click()">
-                                            <i class="bi bi-folder2-open"></i> Pilih File
-                                        </button>
-                                    </div>
-                                    <div class="mt-3">
-                                        <small class="text-muted">
-                                            <i class="bi bi-info-circle"></i> Format Excel: Kolom "Link Produk" dan "Komisi ✅"
-                                        </small>
-                                    </div>
-                                </div>
-
-                                <!-- Link List Tab -->
-                                <div class="tab-pane fade" id="list">
-                                    <div class="d-flex justify-content-between align-items-center mb-3">
-                                        <h5 class="mb-0">Daftar Link Belum Terkirim</h5>
-                                        <div>
-                                            <button class="btn btn-sm btn-outline-secondary" onclick="loadStatus()">
-                                                <i class="bi bi-arrow-clockwise"></i> Refresh
-                                            </button>
-                                            <button class="btn btn-sm btn-danger" onclick="deleteAllLinks()">
-                                                <i class="bi bi-trash"></i> Delete All
-                                            </button>
-                                            <button class="btn btn-sm btn-info hp-label-btn" onclick="setHPLabel('HP 1')">HP 1</button>
-                                            <button class="btn btn-sm btn-info hp-label-btn" onclick="setHPLabel('HP 2')">HP 2</button>
-                                            <button class="btn btn-sm btn-info hp-label-btn" onclick="setHPLabel('HP 3')">HP 3</button>
-                                        </div>
-                                    </div>
-                                    <div id="linkList" class="list-group" style="max-height: 400px; overflow-y: auto;">
-                                        <!-- Links will appear here -->
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    </div>
+                    
+                    <div class="scroll-box" style="max-height: 400px;">
+                        <table style="width: 100%; color: white;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.2);">
+                                    <th style="padding: 10px; text-align: left;">
+                                        <input type="checkbox" id="checkAll" onchange="toggleAllCheckboxes()">
+                                    </th>
+                                    <th style="padding: 10px; text-align: left;">No</th>
+                                    <th style="padding: 10px; text-align: left;">Link Produk</th>
+                                    <th style="padding: 10px; text-align: left;">Tipe</th>
+                                    <th style="padding: 10px; text-align: left;">Sumber</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultTableBody">
+                                <!-- Results will appear here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <button id="sendBtn" onclick="sendToKomisi()" style="flex: 1;">
+                            <i class="bi bi-send"></i> Kirim
+                        </button>
+                        <button class="btn-secondary" onclick="resetForm()" style="flex: 1;">
+                            <i class="bi bi-arrow-clockwise"></i> Reset
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Project 2: Filter CSV -->
-        <div id="project2" class="project-section">
-            <div class="row justify-content-center">
-                <div class="col-md-10">
-                    <div class="card main-card">
-                        <div class="card-header bg-primary text-white py-3">
-                            <h3 class="mb-0"><i class="bi bi-funnel"></i> Proyek 2: Filter & Download CSV</h3>
-                        </div>
-                        <div class="card-body p-4">
-                            <!-- Alert Container -->
-                            <div id="alertContainer2"></div>
-
-                            <div class="filter-section">
-                                <h5><i class="bi bi-gear"></i> Pengaturan Filter</h5>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label class="form-label">Nama Kategori Output</label>
-                                            <input type="text" class="form-control" id="kategoriInput" 
-                                                   placeholder="Contoh: ELEKTRONIK" value="HASIL_FILTER">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label class="form-label">Range Ranking (untuk isAd = No)</label>
-                                            <div class="input-group">
-                                                <input type="number" class="form-control" id="rankFrom" 
-                                                       placeholder="Dari" value="1" min="1">
-                                                <span class="input-group-text">-</span>
-                                                <input type="number" class="form-control" id="rankTo" 
-                                                       placeholder="Sampai" value="100" min="1">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="alert alert-warning mt-3">
-                                    <h6><i class="bi bi-filter"></i> Filter yang akan diterapkan:</h6>
-                                    <ol class="mb-0">
-                                        <li>Ambil hanya Tren = "NAIK"</li>
-                                        <li>Produk dengan isAd = "Yes" → Ambil SEMUA</li>
-                                        <li>Produk dengan isAd = "No" → Sort by Penjualan → Ambil ranking sesuai input</li>
-                                        <li>Gabung hasil keduanya</li>
-                                        <li>Hapus duplikat link</li>
-                                    </ol>
-                                </div>
-                            </div>
-                            
-                            <!-- Multiple File Upload Area -->
-                            <div class="upload-area mt-4" id="csvUploadArea">
-                                <i class="bi bi-file-earmark-text" style="font-size: 48px; color: #0d6efd;"></i>
-                                <h5 class="mt-3">Drag & Drop Multiple CSV Files</h5>
-                                <p class="text-muted">atau klik untuk memilih file</p>
-                                <input type="file" id="csvFiles" accept=".csv" multiple style="display: none;">
-                                <button class="btn btn-outline-primary" onclick="document.getElementById('csvFiles').click()">
-                                    <i class="bi bi-folder2-open"></i> Pilih File CSV
-                                </button>
-                            </div>
-
-                            <!-- File List -->
-                            <div id="fileList" class="file-list mt-3" style="display: none;">
-                                <h6>File yang akan diproses:</h6>
-                                <div id="fileListContent"></div>
-                                <button class="btn btn-success mt-3" onclick="processCSVFiles()">
-                                    <i class="bi bi-play-circle"></i> Proses Semua File
-                                </button>
-                            </div>
-
-                            <!-- Results Section -->
-                            <div id="resultsSection" style="display: none;" class="mt-4">
-                                <div class="card">
-                                    <div class="card-header d-flex justify-content-between align-items-center">
-                                        <h5 class="mb-0">Hasil Filter</h5>
-                                        <div>
-                                            <span class="badge bg-success">Produk Iklan: <span id="adCount">0</span></span>
-                                            <span class="badge bg-primary">Top Sales: <span id="salesCount">0</span></span>
-                                            <span class="badge bg-dark">Total: <span id="totalCount">0</span></span>
-                                        </div>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="result-table">
-                                            <table class="table table-sm table-hover">
-                                                <thead>
-                                                    <tr>
-                                                        <th width="50">No</th>
-                                                        <th width="50">
-                                                            <input type="checkbox" id="checkAll" onchange="toggleAllCheckboxes()">
-                                                        </th>
-                                                        <th>Link Produk</th>
-                                                        <th width="120">Tipe</th>
-                                                        <th width="120">Sumber</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="resultTableBody">
-                                                    <!-- Results will appear here -->
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        
-                                        <!-- Action Buttons -->
-                                        <div class="mt-3">
-                                            <div class="copy-range-input mb-2">
-                                                <button class="btn btn-sm btn-secondary" onclick="copyLinks(1, 50)">Copy 1-50</button>
-                                                <button class="btn btn-sm btn-secondary" onclick="copyLinks(51, 100)">Copy 51-100</button>
-                                                <input type="number" id="copyFrom" placeholder="Dari" style="width: 80px" class="form-control form-control-sm">
-                                                <span>-</span>
-                                                <input type="number" id="copyTo" placeholder="Sampai" style="width: 80px" class="form-control form-control-sm">
-                                                <button class="btn btn-sm btn-secondary" onclick="copyCustomRange()">Copy</button>
-                                            </div>
-                                            <button class="btn btn-primary" onclick="downloadExcel()">
-                                                <i class="bi bi-download"></i> Download Excel
-                                            </button>
-                                            <button class="btn btn-success" onclick="sendToProject1()">
-                                                <i class="bi bi-send"></i> Kirim ke Proyek 1
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+        <!-- Filter Panel -->
+        <div class="panel" id="filter">
+            <h2><i class="bi bi-funnel"></i> Filter Komisi</h2>
+            
+            <div style="display: flex; flex-wrap: wrap; gap: 2rem; justify-content: space-between;">
+                <div style="flex: 1; min-width: 250px;">
+                    <div class="chart-container">
+                        <canvas id="progressChart"></canvas>
+                        <div class="chart-center-text">
+                            <span id="percentageText">0%</span>
                         </div>
                     </div>
+                    
+                    <p style="margin-top: 1rem; text-align: center;">
+                        Link Terkumpul: <span id="linkCount" style="color: #21cbf3; font-weight: bold;">0</span> / 
+                        <span id="threshold" style="color: #4caf50; font-weight: bold;">100</span>
+                    </p>
+                    
+                    <input id="thresholdInput" type="number" placeholder="Masukkan max link (default: 100)" min="10" />
+                    
+                    <div class="action-buttons">
+                        <button onclick="confirmThreshold()">
+                            <i class="bi bi-check-circle"></i> Set Max Link
+                        </button>
+                        <button class="btn-danger" onclick="deleteAllLinks()">
+                            <i class="bi bi-trash"></i> Hapus Semua
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="linkBoxes" style="flex: 2; min-width: 300px;">
+                    <!-- Batch boxes will appear here -->
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
-    <div class="modal fade" id="deleteModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Konfirmasi Hapus</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    Apakah Anda yakin ingin menghapus semua link yang belum terkirim?
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="button" class="btn btn-danger" onclick="confirmDeleteAll()">Hapus Semua</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         // API Base URL
         const API_URL = '/api';
-
-        // Global variables for Project 2
+        
+        // Global variables
         let uploadedFiles = [];
+        let currentThreshold = 100;
+        let myChart = null;
         let filteredResults = [];
-        let currentMaxLinks = 100;
-
-        // Show/hide projects
-        function showProject(projectId) {
-            document.querySelectorAll('.project-section').forEach(section => {
-                section.classList.remove('active');
+        
+        // Tab navigation
+        const tabs = document.querySelectorAll('.tab-btn');
+        const panels = document.querySelectorAll('.panel');
+        
+        tabs.forEach(btn => {
+            btn.addEventListener('click', () => {
+                tabs.forEach(b => b.classList.remove('active'));
+                panels.forEach(p => p.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab).classList.add('active');
+                
+                if (btn.dataset.tab === 'filter') {
+                    loadBatches();
+                }
             });
-            
-            document.getElementById(projectId).classList.add('active');
-            
-            document.querySelectorAll('.navbar-nav .nav-link').forEach(link => {
-                link.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            
-            if (projectId === 'project1') {
-                loadStatus();
-                loadConfig();
-            } else {
-                loadSavedResults();
-            }
-        }
-
-        // Load status on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            loadStatus();
-            loadConfig();
         });
 
-        // ========== PROJECT 1: Input Link Komisi ==========
+        // Drop zone functionality
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('csvFiles');
         
-        // Load config
-        async function loadConfig() {
-            try {
-                const response = await fetch(`${API_URL}/config`);
-                const data = await response.json();
-                currentMaxLinks = data.maxLinks || 100;
-                document.getElementById('maxLinks').textContent = currentMaxLinks;
-                document.getElementById('thresholdInput').value = currentMaxLinks;
-            } catch (error) {
-                console.error('Error loading config:', error);
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFiles(files);
+            }
+        });
+        
+        fileInput.addEventListener('change', e => {
+            if (e.target.files.length > 0) {
+                handleFiles(e.target.files);
+            }
+        });
+
+        // Update rank display
+        document.getElementById('rankFromInput').addEventListener('input', (e) => {
+            document.getElementById('rankFrom').textContent = e.target.value || '1';
+        });
+        
+        document.getElementById('rankToInput').addEventListener('input', (e) => {
+            document.getElementById('rankTo').textContent = e.target.value || '100';
+        });
+
+        function handleFiles(files) {
+            uploadedFiles = Array.from(files);
+            displayFileList();
+        }
+
+        function displayFileList() {
+            const fileList = document.getElementById('fileList');
+            const fileListContent = document.getElementById('fileListContent');
+            
+            if (uploadedFiles.length === 0) {
+                fileList.style.display = 'none';
+                return;
+            }
+            
+            fileList.style.display = 'block';
+            fileListContent.innerHTML = uploadedFiles.map((file, index) => `
+                <div class="file-item">
+                    <span><i class="bi bi-file-earmark-text"></i> ${file.name}</span>
+                    <button onclick="removeFile(${index})">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            `).join('');
+            
+            dropZone.innerHTML = `
+                <i class="bi bi-check-circle" style="color: #4caf50;"></i>
+                <div>${uploadedFiles.length} file siap diproses</div>
+                <small>Klik untuk ganti file</small>
+            `;
+        }
+
+        function removeFile(index) {
+            uploadedFiles.splice(index, 1);
+            displayFileList();
+            if (uploadedFiles.length === 0) {
+                dropZone.innerHTML = `
+                    <i class="bi bi-file-earmark-csv"></i>
+                    <div>Tarik file CSV ke sini atau klik untuk memilih</div>
+                    <small>Support multiple files</small>
+                `;
             }
         }
 
-        // Update threshold
-        async function updateThreshold() {
+        async function processCSVFiles() {
+            if (uploadedFiles.length === 0) {
+                showAlert('danger', 'Pilih file CSV terlebih dahulu');
+                return;
+            }
+
+            const processBtn = document.getElementById('processBtn');
+            processBtn.disabled = true;
+            processBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Memproses...';
+
+            const formData = new FormData();
+            uploadedFiles.forEach(file => {
+                formData.append('files', file);
+            });
+            formData.append('kategori', document.getElementById('kategoriInput').value || 'HASIL_FILTER');
+            formData.append('rankFrom', document.getElementById('rankFromInput').value || 1);
+            formData.append('rankTo', document.getElementById('rankToInput').value || 100);
+            
+            try {
+                // Process CSV files
+                const response = await fetch(`${API_URL}/filter-csv-multiple`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('success', `Filter berhasil! ${result.totalCount} link ditemukan.`);
+                    filteredResults = result.results;
+                    displayResults(result);
+                    document.getElementById('resultsSection').style.display = 'block';
+                } else {
+                    showAlert('danger', result.error || 'Gagal memproses file');
+                }
+            } catch (error) {
+                showAlert('danger', 'Error: ' + error.message);
+            } finally {
+                processBtn.disabled = false;
+                processBtn.innerHTML = '<i class="bi bi-gear"></i> Proses';
+            }
+        }
+
+        function displayResults(result) {
+            document.getElementById('adCount').textContent = result.adCount || 0;
+            document.getElementById('salesCount').textContent = result.salesCount || 0;
+            document.getElementById('totalCount').textContent = result.totalCount || 0;
+            
+            // Make sure filteredResults is properly set
+            if (!filteredResults || filteredResults.length === 0) {
+                filteredResults = result.results;
+            }
+            
+            const tbody = document.getElementById('resultTableBody');
+            tbody.innerHTML = filteredResults.map((item, index) => `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <td style="padding: 10px;">
+                        <input type="checkbox" class="result-checkbox" data-index="${index}" 
+                               ${item.checked ? 'checked' : ''} onchange="updateCheckState(${index})">
+                    </td>
+                    <td style="padding: 10px;">${index + 1}</td>
+                    <td style="padding: 10px; color: #21cbf3;">${item.link}</td>
+                    <td style="padding: 10px;">
+                        <span style="background: ${item.type === 'Iklan' ? 'rgba(76,175,80,0.3)' : 'rgba(33,150,243,0.3)'}; 
+                                     padding: 3px 10px; border-radius: 15px; font-size: 12px;">
+                            ${item.type}
+                        </span>
+                    </td>
+                    <td style="padding: 10px; opacity: 0.7; font-size: 12px;">${item.source}</td>
+                </tr>
+            `).join('');
+        }
+
+        function toggleAllCheckboxes() {
+            const checkAll = document.getElementById('checkAll').checked;
+            const checkboxes = document.querySelectorAll('.result-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = checkAll;
+                const index = parseInt(cb.dataset.index);
+                if (filteredResults[index]) {
+                    filteredResults[index].checked = checkAll;
+                }
+            });
+            console.log('Toggle all:', checkAll, 'Total checked:', filteredResults.filter(r => r.checked).length);
+        }
+
+        function updateCheckState(index) {
+            const checkbox = document.querySelector(`[data-index="${index}"]`);
+            if (checkbox && filteredResults[index]) {
+                filteredResults[index].checked = checkbox.checked;
+                console.log(`Updated index ${index}:`, filteredResults[index].checked);
+            }
+        }
+
+        async function sendToKomisi() {
+            // Debug log
+            console.log('All results:', filteredResults);
+            console.log('Checked items:', filteredResults.filter(item => item.checked));
+            
+            const checkedItems = filteredResults.filter(item => item.checked === true);
+            
+            if (checkedItems.length === 0) {
+                showAlert('danger', 'Pilih minimal 1 link untuk dikirim');
+                return;
+            }
+
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Mengirim...';
+
+            try {
+                const response = await fetch(`${API_URL}/send-to-project1`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ links: checkedItems })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('success', result.message);
+                    
+                    // Reset form
+                    resetForm();
+                    
+                    // Switch to filter tab after delay
+                    setTimeout(() => {
+                        document.querySelector('[data-tab="filter"]').click();
+                    }, 1500);
+                } else {
+                    showAlert('danger', result.error || 'Gagal mengirim ke sistem komisi');
+                    sendBtn.disabled = false;
+                    sendBtn.innerHTML = '<i class="bi bi-send"></i> Kirim';
+                }
+            } catch (error) {
+                showAlert('danger', 'Error: ' + error.message);
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = '<i class="bi bi-send"></i> Kirim';
+            }
+        }
+
+        function resetForm() {
+            uploadedFiles = [];
+            filteredResults = [];
+            
+            // Reset file input if exists
+            const fileInput = document.getElementById('csvFiles');
+            if (fileInput) {
+                fileInput.value = '';
+            }
+            
+            // Hide sections
+            const fileList = document.getElementById('fileList');
+            if (fileList) {
+                fileList.style.display = 'none';
+            }
+            
+            const resultsSection = document.getElementById('resultsSection');
+            if (resultsSection) {
+                resultsSection.style.display = 'none';
+            }
+            
+            // Reset dropzone
+            const dropZone = document.getElementById('dropZone');
+            if (dropZone) {
+                dropZone.innerHTML = `
+                    <i class="bi bi-file-earmark-csv"></i>
+                    <div>Tarik file CSV ke sini atau klik untuk memilih</div>
+                    <small>Support multiple files</small>
+                `;
+            }
+            
+            // Reset button
+            const processBtn = document.getElementById('processBtn');
+            if (processBtn) {
+                processBtn.disabled = false;
+                processBtn.innerHTML = '<i class="bi bi-gear"></i> Proses';
+            }
+        }
+
+        // Chart functions
+        function renderChart(current, max) {
+            const ctx = document.getElementById('progressChart').getContext('2d');
+            const percentage = Math.round((current / max) * 100);
+            
+            if (myChart) myChart.destroy();
+            
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [current, Math.max(0, max - current)],
+                        backgroundColor: ['#4caf50', 'rgba(255, 255, 255, 0.1)'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    cutout: '70%',
+                    plugins: {
+                        tooltip: { enabled: false },
+                        legend: { display: false }
+                    }
+                }
+            });
+            
+            document.getElementById('percentageText').textContent = percentage + '%';
+        }
+
+        async function loadBatches() {
+            try {
+                // Load config first
+                const configResponse = await fetch(`${API_URL}/config`);
+                const configData = await configResponse.json();
+                currentThreshold = configData.maxLinks || 100;
+                document.getElementById('threshold').textContent = currentThreshold;
+                document.getElementById('thresholdInput').value = currentThreshold;
+                
+                // Load batches
+                const response = await fetch(`${API_URL}/batches`);
+                const data = await response.json();
+                
+                document.getElementById('linkCount').textContent = data.totalCount;
+                renderChart(data.totalCount, currentThreshold);
+                
+                const linkBoxes = document.getElementById('linkBoxes');
+                
+                if (data.batches.length === 0) {
+                    linkBoxes.innerHTML = '<p style="text-align: center; opacity: 0.6;">Belum ada link terkumpul</p>';
+                } else {
+                    linkBoxes.innerHTML = data.batches.map((batch, index) => `
+                        <div class="batch-box">
+                            <div class="batch-header">
+                                <h4>Batch ${batch.batchNumber} (${batch.links.length} link)</h4>
+                                <select onchange="updateBatchLabel(${batch.batchNumber}, this.value)">
+                                    <option value="HP 1" ${batch.label === 'HP 1' ? 'selected' : ''}>HP 1</option>
+                                    <option value="HP 2" ${batch.label === 'HP 2' ? 'selected' : ''}>HP 2</option>
+                                    <option value="HP 3" ${batch.label === 'HP 3' ? 'selected' : ''}>HP 3</option>
+                                    <option value="HP 4" ${batch.label === 'HP 4' ? 'selected' : ''}>HP 4</option>
+                                    <option value="HP 5" ${batch.label === 'HP 5' ? 'selected' : ''}>HP 5</option>
+                                </select>
+                            </div>
+                            <div class="scroll-box">
+                                <ul>
+                                    ${batch.links.map((link, linkIndex) => `
+                                        <li>
+                                            <span>
+                                                <span class="link-number">${batch.startIndex + linkIndex}.</span>
+                                                ${link.link_produk}
+                                            </span>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                            <button style="margin-top: 10px;" onclick="sendToHP(${batch.batchNumber}, '${batch.label}')">
+                                <i class="bi bi-send"></i> KIRIM
+                            </button>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading batches:', error);
+                showAlert('danger', 'Gagal memuat data');
+            }
+        }
+
+        async function confirmThreshold() {
             const newThreshold = parseInt(document.getElementById('thresholdInput').value);
-            if (newThreshold < 10) {
-                showAlert('danger', 'Minimal threshold adalah 10', 'alertContainer1');
+            if (!newThreshold || newThreshold < 10) {
+                showAlert('danger', 'Minimal threshold adalah 10');
                 return;
             }
 
@@ -494,43 +932,19 @@
                 
                 const result = await response.json();
                 if (result.success) {
-                    currentMaxLinks = newThreshold;
-                    document.getElementById('maxLinks').textContent = currentMaxLinks;
-                    showAlert('success', 'Threshold berhasil diupdate', 'alertContainer1');
-                    loadStatus();
+                    currentThreshold = newThreshold;
+                    document.getElementById('threshold').textContent = currentThreshold;
+                    showAlert('success', 'Max link berhasil diupdate');
+                    loadBatches();
                 }
             } catch (error) {
-                showAlert('danger', 'Gagal update threshold', 'alertContainer1');
+                showAlert('danger', 'Gagal update threshold');
             }
         }
 
-        // Delete all links
-        function deleteAllLinks() {
-            const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
-            modal.show();
-        }
-
-        async function confirmDeleteAll() {
+        async function updateBatchLabel(batchNumber, label) {
             try {
-                const response = await fetch(`${API_URL}/links/delete-all`, {
-                    method: 'DELETE'
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    showAlert('success', 'Semua link berhasil dihapus', 'alertContainer1');
-                    bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
-                    loadStatus();
-                }
-            } catch (error) {
-                showAlert('danger', 'Gagal menghapus link', 'alertContainer1');
-            }
-        }
-
-        // Set HP Label
-        async function setHPLabel(label) {
-            try {
-                const response = await fetch(`${API_URL}/links/set-label`, {
+                const response = await fetch(`${API_URL}/batches/${batchNumber}/label`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ label })
@@ -538,446 +952,98 @@
                 
                 const result = await response.json();
                 if (result.success) {
-                    showAlert('success', `Label ${label} berhasil diterapkan`, 'alertContainer1');
-                    loadStatus();
+                    showAlert('success', `Batch ${batchNumber} diset untuk ${label}`);
                 }
             } catch (error) {
-                showAlert('danger', 'Gagal set label HP', 'alertContainer1');
+                showAlert('danger', 'Gagal update label batch');
             }
         }
 
-        // Manual input form
-        document.getElementById('linkForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const link = document.getElementById('linkInput').value;
-            const komisi = document.getElementById('komisiCheck').checked;
+        async function deleteAllLinks() {
+            if (!confirm('Apakah Anda yakin ingin menghapus semua link?')) {
+                return;
+            }
             
             try {
-                const response = await fetch(`${API_URL}/links`, {
+                const response = await fetch(`${API_URL}/links/delete-all`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showAlert('success', 'Semua link berhasil dihapus');
+                    loadBatches();
+                }
+            } catch (error) {
+                showAlert('danger', 'Gagal menghapus link');
+            }
+        }
+
+        async function sendToHP(batchNumber, label) {
+            try {
+                const response = await fetch(`${API_URL}/send-links`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ link, komisi })
+                    body: JSON.stringify({ hpLabel: label })
                 });
                 
                 const result = await response.json();
                 
                 if (result.success) {
-                    showAlert('success', result.message, 'alertContainer1');
-                    document.getElementById('linkInput').value = '';
-                    loadStatus();
+                    showAlert('success', result.message);
+                    loadBatches(); // Refresh batches
                 } else {
-                    showAlert('danger', result.error || 'Terjadi kesalahan', 'alertContainer1');
+                    showAlert('danger', result.error || 'Gagal mengirim batch');
                 }
             } catch (error) {
-                showAlert('danger', 'Gagal menghubungi server', 'alertContainer1');
-            }
-        });
-
-        // Excel upload - Drag & Drop
-        const uploadArea = document.getElementById('uploadArea');
-        const excelFile = document.getElementById('excelFile');
-
-        uploadArea.addEventListener('click', () => excelFile.click());
-
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleExcelUpload(files[0]);
-            }
-        });
-
-        excelFile.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                handleExcelUpload(e.target.files[0]);
-            }
-        });
-
-        async function handleExcelUpload(file) {
-            const formData = new FormData();
-            formData.append('file', file);
-            
-            showAlert('info', 'Mengupload file...', 'alertContainer1', false);
-            
-            try {
-                const response = await fetch(`${API_URL}/upload-excel`, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showAlert('success', result.message, 'alertContainer1');
-                    loadStatus();
-                } else {
-                    showAlert('danger', result.error || 'Gagal memproses file', 'alertContainer1');
-                }
-            } catch (error) {
-                showAlert('danger', 'Gagal mengupload file', 'alertContainer1');
+                showAlert('danger', 'Error: ' + error.message);
             }
         }
 
-        async function loadStatus() {
-            try {
-                const response = await fetch(`${API_URL}/status`);
-                const data = await response.json();
-                
-                // Update progress
-                const percentage = Math.round((data.count / currentMaxLinks) * 100);
-                document.getElementById('linkCount').textContent = data.count;
-                document.getElementById('progressText').textContent = percentage + '%';
-                document.querySelector('.progress-circle').style.setProperty('--progress', percentage + '%');
-                
-                // Update link list
-                const linkList = document.getElementById('linkList');
-                if (data.links.length === 0) {
-                    linkList.innerHTML = '<div class="text-center text-muted py-4">Belum ada link</div>';
-                } else {
-                    linkList.innerHTML = data.links.map((item, index) => `
-                        <div class="list-group-item link-item">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <small class="text-muted">#${index + 1}</small>
-                                    ${item.hp_label ? `<span class="badge bg-info ms-2">${item.hp_label}</span>` : ''}
-                                    <div class="text-truncate" style="max-width: 500px;">
-                                        <i class="bi bi-link-45deg text-success"></i> ${item.link_produk}
-                                    </div>
-                                </div>
-                                <a href="${item.link_produk}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-box-arrow-up-right"></i>
-                                </a>
-                            </div>
-                        </div>
-                    `).join('');
-                }
-                
-                // Show notification if ready
-                if (data.count >= currentMaxLinks) {
-                    showAlert('warning', `Link sudah mencapai ${currentMaxLinks}! Notifikasi akan segera dikirim.`, 'alertContainer1');
-                }
-            } catch (error) {
-                console.error('Error loading status:', error);
-            }
-        }
-
-        // ========== PROJECT 2: Filter CSV ==========
-        
-        // CSV upload - Multiple files
-        const csvUploadArea = document.getElementById('csvUploadArea');
-        const csvFiles = document.getElementById('csvFiles');
-
-        csvUploadArea.addEventListener('click', () => csvFiles.click());
-
-        csvUploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            csvUploadArea.classList.add('dragover');
-        });
-
-        csvUploadArea.addEventListener('dragleave', () => {
-            csvUploadArea.classList.remove('dragover');
-        });
-
-        csvUploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            csvUploadArea.classList.remove('dragover');
-            
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleCSVFiles(files);
-            }
-        });
-
-        csvFiles.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                handleCSVFiles(e.target.files);
-            }
-        });
-
-        function handleCSVFiles(files) {
-            uploadedFiles = Array.from(files);
-            displayFileList();
-        }
-
-        function displayFileList() {
-            const fileList = document.getElementById('fileList');
-            const fileListContent = document.getElementById('fileListContent');
-            
-            fileList.style.display = 'block';
-            fileListContent.innerHTML = uploadedFiles.map((file, index) => `
-                <div class="file-item">
-                    <span><i class="bi bi-file-earmark-text"></i> ${file.name}</span>
-                    <button class="btn btn-sm btn-danger" onclick="removeFile(${index})">
-                        <i class="bi bi-x"></i>
-                    </button>
-                </div>
-            `).join('');
-        }
-
-        function removeFile(index) {
-            uploadedFiles.splice(index, 1);
-            if (uploadedFiles.length === 0) {
-                document.getElementById('fileList').style.display = 'none';
-            } else {
-                displayFileList();
-            }
-        }
-
-        async function processCSVFiles() {
-            if (uploadedFiles.length === 0) {
-                showAlert('danger', 'Tidak ada file untuk diproses', 'alertContainer2');
-                return;
-            }
-
-            const formData = new FormData();
-            uploadedFiles.forEach(file => {
-                formData.append('files', file);
-            });
-            formData.append('kategori', document.getElementById('kategoriInput').value || 'HASIL_FILTER');
-            formData.append('rankFrom', document.getElementById('rankFrom').value || 1);
-            formData.append('rankTo', document.getElementById('rankTo').value || 100);
-            
-            showAlert('info', 'Memproses file CSV...', 'alertContainer2', false);
-            
-            try {
-                const response = await fetch(`${API_URL}/filter-csv-multiple`, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showAlert('success', result.message, 'alertContainer2');
-                    filteredResults = result.results;
-                    displayResults(result);
-                    saveResultsToStorage(result);
-                } else {
-                    showAlert('danger', result.error || 'Gagal memproses file', 'alertContainer2');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showAlert('danger', 'Gagal memproses file CSV', 'alertContainer2');
-            }
-        }
-
-        function displayResults(result) {
-            document.getElementById('resultsSection').style.display = 'block';
-            document.getElementById('adCount').textContent = result.adCount || 0;
-            document.getElementById('salesCount').textContent = result.salesCount || 0;
-            document.getElementById('totalCount').textContent = result.totalCount || 0;
-            
-            const tbody = document.getElementById('resultTableBody');
-            tbody.innerHTML = result.results.map((item, index) => `
-                <tr>
-                    <td>${index + 1}</td>
-                    <td>
-                        <input type="checkbox" class="result-checkbox" data-index="${index}" 
-                               ${item.checked ? 'checked' : ''} onchange="updateCheckState(${index})">
-                    </td>
-                    <td>${item.link}</td>
-                    <td>
-                        <span class="badge ${item.type === 'Iklan' ? 'bg-success' : 'bg-primary'}">
-                            ${item.type}
-                        </span>
-                    </td>
-                    <td><small>${item.source}</small></td>
-                </tr>
-            `).join('');
-        }
-
-        function toggleAllCheckboxes() {
-            const checkAll = document.getElementById('checkAll').checked;
-            const checkboxes = document.querySelectorAll('.result-checkbox');
-            checkboxes.forEach(cb => {
-                cb.checked = checkAll;
-                const index = parseInt(cb.dataset.index);
-                filteredResults[index].checked = checkAll;
-            });
-            saveResultsToStorage();
-        }
-
-        function updateCheckState(index) {
-            const checkbox = document.querySelector(`[data-index="${index}"]`);
-            if (checkbox) {
-                filteredResults[index].checked = checkbox.checked;
-                saveResultsToStorage();
-                console.log(`Updated check state for index ${index}:`, filteredResults[index].checked);
-            }
-        }
-
-        function copyLinks(from, to) {
-            const links = [];
-            for (let i = from - 1; i < Math.min(to, filteredResults.length); i++) {
-                if (filteredResults[i]) {
-                    links.push(filteredResults[i].link);
-                }
-            }
-            
-            if (links.length > 0) {
-                navigator.clipboard.writeText(links.join('\n')).then(() => {
-                    showAlert('success', `${links.length} link berhasil dicopy`, 'alertContainer2');
-                });
-            }
-        }
-
-        function copyCustomRange() {
-            const from = parseInt(document.getElementById('copyFrom').value);
-            const to = parseInt(document.getElementById('copyTo').value);
-            
-            if (!from || !to || from > to) {
-                showAlert('danger', 'Range tidak valid', 'alertContainer2');
-                return;
-            }
-            
-            copyLinks(from, to);
-        }
-
-        async function downloadExcel() {
-            if (filteredResults.length === 0) {
-                showAlert('danger', 'Tidak ada data untuk didownload', 'alertContainer2');
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_URL}/generate-excel`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        results: filteredResults,
-                        kategori: document.getElementById('kategoriInput').value || 'HASIL_FILTER'
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success && result.downloadUrl) {
-                    const a = document.createElement('a');
-                    a.href = result.downloadUrl;
-                    a.download = `${result.kategori}.xlsx`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    
-                    showAlert('success', 'File Excel berhasil didownload', 'alertContainer2');
-                }
-            } catch (error) {
-                showAlert('danger', 'Gagal generate Excel', 'alertContainer2');
-            }
-        }
-
-        async function sendToProject1() {
-            const checkedItems = filteredResults.filter(item => item.checked);
-            
-            if (checkedItems.length === 0) {
-                showAlert('danger', 'Pilih minimal 1 link untuk dikirim', 'alertContainer2');
-                return;
-            }
-
-            showAlert('info', 'Mengirim ke Proyek 1...', 'alertContainer2', false);
-
-            try {
-                const response = await fetch(`${API_URL}/send-to-project1`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ links: checkedItems })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showAlert('success', `${result.added} link berhasil dikirim ke Proyek 1, ${result.skipped} link sudah ada`, 'alertContainer2');
-                    
-                    // Clear checked items from storage
-                    clearStorage();
-                    filteredResults = [];
-                    document.getElementById('resultsSection').style.display = 'none';
-                    
-                    // Reset file upload area
-                    uploadedFiles = [];
-                    document.getElementById('fileList').style.display = 'none';
-                    document.getElementById('csvFiles').value = '';
-                    
-                    // Optional: Switch to Project 1 to see results
-                    setTimeout(() => {
-                        showProject('project1');
-                    }, 2000);
-                } else {
-                    showAlert('danger', result.error || 'Gagal mengirim ke Proyek 1', 'alertContainer2');
-                }
-            } catch (error) {
-                console.error('Error sending to Project 1:', error);
-                showAlert('danger', 'Gagal mengirim ke Proyek 1: ' + error.message, 'alertContainer2');
-            }
-        }
-
-        // Storage functions
-        function saveResultsToStorage(fullResult = null) {
-            const data = {
-                timestamp: new Date().toISOString(),
-                results: filteredResults,
-                fullResult: fullResult
-            };
-            localStorage.setItem('project2_filtered_data', JSON.stringify(data));
-        }
-
-        function loadSavedResults() {
-            const saved = localStorage.getItem('project2_filtered_data');
-            if (saved) {
-                const data = JSON.parse(saved);
-                filteredResults = data.results || [];
-                if (data.fullResult) {
-                    displayResults(data.fullResult);
-                }
-            }
-        }
-
-        function clearStorage() {
-            localStorage.removeItem('project2_filtered_data');
-        }
-
-        function showAlert(type, message, containerId = 'alertContainer1', autoDismiss = true) {
-            const alertContainer = document.getElementById(containerId);
+        function showAlert(type, message) {
+            const alertContainer = document.getElementById('alertContainer');
             const alertId = 'alert-' + Date.now();
             
+            const iconMap = {
+                success: 'check-circle',
+                danger: 'x-circle',
+                info: 'info-circle'
+            };
+            
             const alertHtml = `
-                <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
-                    <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'danger' ? 'x-circle' : 'info-circle'}"></i>
-                    ${message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <div id="${alertId}" class="alert alert-${type}">
+                    <i class="bi bi-${iconMap[type]}"></i>
+                    <span>${message}</span>
                 </div>
             `;
             
             alertContainer.innerHTML = alertHtml;
             
-            if (autoDismiss) {
-                setTimeout(() => {
-                    const alert = document.getElementById(alertId);
-                    if (alert) {
-                        alert.remove();
-                    }
-                }, 5000);
-            }
+            setTimeout(() => {
+                const alert = document.getElementById(alertId);
+                if (alert) {
+                    alert.style.animation = 'slideOut 0.3s ease-in forwards';
+                    setTimeout(() => alert.remove(), 300);
+                }
+            }, 5000);
         }
-
-        // Auto refresh every 30 seconds for project 1
-        setInterval(() => {
-            if (document.getElementById('project1').classList.contains('active')) {
-                loadStatus();
+        
+        // Add slideOut animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideOut {
+                to {
+                    transform: translateX(-100%);
+                    opacity: 0;
+                }
             }
-        }, 30000);
+        `;
+        document.head.appendChild(style);
+
+        // Load initial data
+        document.addEventListener('DOMContentLoaded', () => {
+            loadBatches();
+        });
     </script>
 </body>
 </html>

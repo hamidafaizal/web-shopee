@@ -1,58 +1,99 @@
+// src/services/fcmService.js - REPLACE EXISTING FILE
 const admin = require('firebase-admin');
+const path = require('path');
 
-// Initialize Firebase Admin SDK
-// Note: You need to download service account key from Firebase Console
-// and save it as firebase-credentials.json
+// Initialize Firebase Admin
 try {
-  const serviceAccount = require('../../firebase-credentials.json');
+  const serviceAccount = require(path.join(__dirname, '../../firebase-credentials.json'));
   
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
   });
   
-  console.log('Firebase Admin SDK initialized');
+  console.log('Firebase Admin initialized successfully');
 } catch (error) {
-  console.error('Firebase initialization error:', error);
-  console.log('Please add firebase-credentials.json file');
+  console.error('Failed to initialize Firebase Admin:', error);
+  console.error('Make sure firebase-credentials.json exists in the root directory');
 }
 
 class FCMService {
-  static async sendNotification(messageData) {
+  static async broadcastToAll(data) {
     try {
+      const topic = 'all_devices'; // Topic untuk semua device
+      
       const message = {
+        topic: topic,
         notification: {
-          title: messageData.title,
-          body: messageData.body
+          title: data.title,
+          body: data.body
         },
-        data: messageData.data,
-        topic: 'komisi_updates'
+        data: {
+          type: data.data.type || 'komisi_batch',
+          count: data.data.count.toString(),
+          hp_label: data.data.hp_label || 'HP',
+          links: data.data.links,
+          timestamp: new Date().toISOString()
+        },
+        android: {
+          priority: 'high',
+          notification: {
+            sound: 'default',
+            clickAction: 'OPEN_KOMISI_ACTIVITY',
+            channelId: 'komisi_channel'
+          }
+        },
+        webpush: {
+          headers: {
+            Urgency: 'high'
+          },
+          notification: {
+            icon: '/pwa/icons/icon-192.png',
+            badge: '/pwa/icons/icon-192.png',
+            tag: 'komisi-batch',
+            requireInteraction: true
+          }
+        }
       };
       
       const response = await admin.messaging().send(message);
-      console.log('Successfully sent message:', response);
-      return response;
+      console.log('FCM broadcast sent successfully:', response);
+      
+      return { success: true, messageId: response };
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Error broadcasting FCM:', error);
+      return { success: false, error: error.message };
+    }
+  }
+  
+  static async sendBatchToAll(batchNumber, links, hpLabel) {
+    try {
+      // Format links dengan newlines
+      const linksArray = links.map(link => link.link_produk);
+      const linksText = linksArray.join('\n');
+      
+      return await FCMService.broadcastToAll({
+        title: `📱 Batch Baru ${hpLabel}!`,
+        body: `${links.length} link komisi siap diproses`,
+        data: {
+          links: linksText,
+          count: links.length,
+          type: 'komisi_batch',
+          hp_label: hpLabel
+        }
+      });
+    } catch (error) {
+      console.error('Error sending batch to all:', error);
       throw error;
     }
   }
   
-  static async sendToToken(token, messageData) {
+  // Method untuk subscribe device ke topic (opsional)
+  static async subscribeToTopic(token) {
     try {
-      const message = {
-        notification: {
-          title: messageData.title,
-          body: messageData.body
-        },
-        data: messageData.data,
-        token: token
-      };
-      
-      const response = await admin.messaging().send(message);
-      return response;
+      await admin.messaging().subscribeToTopic([token], 'all_devices');
+      console.log('Device subscribed to all_devices topic');
     } catch (error) {
-      console.error('Error sending to token:', error);
-      throw error;
+      console.error('Error subscribing to topic:', error);
     }
   }
 }

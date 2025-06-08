@@ -182,11 +182,24 @@ class CSVController {
       // Send to Project 1
       const result = await KomisiController.receiveFromProject2(links);
       
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+      
+      let message = `${result.added} link berhasil ditambahkan ke Proyek 1`;
+      if (result.skipped > 0) {
+        message += `, ${result.skipped} link sudah ada`;
+      }
+      if (result.notAdded > 0) {
+        message += `, ${result.notAdded} link tidak ditambahkan karena melebihi limit`;
+      }
+      
       res.json({
         success: true,
-        message: `${result.added} link berhasil ditambahkan ke Proyek 1, ${result.skipped} link sudah ada.`,
+        message: message,
         added: result.added,
-        skipped: result.skipped
+        skipped: result.skipped,
+        notAdded: result.notAdded
       });
 
     } catch (error) {

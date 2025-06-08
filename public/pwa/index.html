@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Komisi Mobile</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#21cbf3">
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- PWA Install & Notification -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+</head>
+<body class="chat-page">
+    <!-- Header -->
+    <header class="chat-header">
+        <div class="header-content">
+            <button id="backBtn" class="back-btn">←</button>
+            <div class="header-info">
+                <h1>📱 Komisi Mobile</h1>
+                <span>Siap Terima Link Komisi</span>
+            </div>
+            <button id="settingsBtn" class="settings-btn">⚙️</button>
+        </div>
+    </header>
+
+    <!-- Chat Messages -->
+    <main class="chat-main">
+        <div id="messagesContainer" class="messages-container">
+            <!-- Welcome message -->
+            <div class="system-message">
+                <p>🎯 PWA Siap Menerima Link Komisi</p>
+                <small>Tunggu admin web mengirim batch link</small>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Actions -->
+    <footer class="chat-footer">
+        <div class="action-buttons">
+            <button id="copyAllBtn" class="action-btn copy-btn" disabled>
+                📋 Copy All Links
+            </button>
+            <button id="clearAllBtn" class="action-btn delete-btn" disabled>
+                🗑️ Clear All Chat
+            </button>
+        </div>
+        
+        <div class="footer-info">
+            <span id="totalLinksCount">0 links tersedia</span>
+        </div>
+    </footer>
+
+    <!-- Notification Permission Modal -->
+    <div id="notifModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>🔔 Izin Notifikasi</h3>
+            <p>Aplikasi perlu izin notifikasi untuk menerima batch link dari admin web.</p>
+            <div class="modal-actions">
+                <button id="allowNotifBtn" class="btn-primary">Izinkan</button>
+                <button id="denyNotifBtn" class="btn-secondary">Nanti</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Config -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getMessaging, getToken } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
+        
+        // Firebase config (update sesuai permintaan)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDZPdfVtAzUGT6wL965VJn9sz6njgxM-9g",
+            authDomain: "komisi-pwa.firebaseapp.com",
+            projectId: "komisi-pwa",
+            storageBucket: "komisi-pwa.firebasestorage.app",
+            messagingSenderId: "598426607548",
+            appId: "1:598426607548:web:af77f0a747f0d929cc15b9"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        window.messaging = getMessaging(app);
+
+        // Tambahkan kode untuk mengambil token dengan VAPID key
+        const token = await getToken(window.messaging, {
+            vapidKey: 'BPxxx...' // Ganti dengan VAPID key Firebase project Anda
+        });
+    </script>
+    
+    <script src="js/app.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(registration => console.log('SW registered:', registration))
+                .catch(error => console.log('SW registration failed:', error));
+        }
+    </script>
+</body>
+</html>
