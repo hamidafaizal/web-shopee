@@ -1,7 +1,7 @@
 // src/controllers/komisiController.js
 const KomisiLink = require('../models/komisiLink');
 const KomisiConfig = require('../models/komisiConfig');
-const HPNumber = require('../models/hpNumber');
+const FCMService = require('../services/fcmService');
 const XLSX = require('xlsx');
 
 class KomisiController {
@@ -151,23 +151,13 @@ class KomisiController {
         // Get HP label for this batch (use first link's label or default)
         const label = batchLinks[0]?.hp_label || `HP ${batchNumber}`;
         
-        // Ensure links are properly formatted
-        const formattedLinks = batchLinks.map(link => {
-          // If link is an object with link_produk property
-          if (typeof link === 'object' && link.link_produk) {
-            return link.link_produk;
-          }
-          // If link is already a string
-          return link;
-        });
-        
         batches.push({
           batchNumber: batchNumber,
           label: label,
-          links: formattedLinks,
+          links: batchLinks,
           startIndex: i + 1,
           endIndex: Math.min(i + batchSize, links.length),
-          expanded: false
+          expanded: false // For UI state
         });
       }
       
@@ -178,7 +168,7 @@ class KomisiController {
       });
     } catch (error) {
       console.error('Error getting batches:', error);
-      res.status(500).json({ error: 'Internal server error: ' + error.message });
+      res.status(500).json({ error: 'Internal server error' });
     }
   }
   
@@ -275,6 +265,55 @@ class KomisiController {
     }
   }
   
+  static async checkAndProcess() {
+    try {
+      const config = await KomisiConfig.get();
+      const count = await KomisiLink.countUnsent();
+      
+      if (count >= config.max_links) {
+        // Get links grouped by HP label
+        const links = await KomisiLink.getUnsentByLabel(config.max_links);
+        
+        // Group links by HP label
+        const linksByLabel = {};
+        links.forEach(link => {
+          const label = link.hp_label || 'DEFAULT';
+          if (!linksByLabel[label]) {
+            linksByLabel[label] = [];
+          }
+          linksByLabel[label].push(link);
+        });
+        
+        // Send notification for each HP label group
+        for (const [label, labelLinks] of Object.entries(linksByLabel)) {
+          if (labelLinks.length >= config.max_links) {
+            const linkText = labelLinks.slice(0, config.max_links).map(l => l.link_produk).join('\n');
+            
+            await FCMService.sendNotification({
+              title: `Link Komisi Baru - ${label}!`,
+              body: `${config.max_links} link komisi siap diproses untuk ${label}`,
+              data: {
+                links: linkText,
+                count: config.max_links.toString(),
+                type: 'komisi_batch',
+                hp_label: label
+              }
+            });
+            
+            // Mark as sent
+            const batchId = Date.now();
+            const ids = labelLinks.slice(0, config.max_links).map(l => l.id);
+            await KomisiLink.markAsSent(ids, batchId);
+            
+            console.log(`Batch ${batchId} sent for ${label} with ${config.max_links} links`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error in checkAndProcess:', error);
+    }
+  }
+  
   // Receive from Project 2
   static async receiveFromProject2(links) {
     try {
@@ -339,9 +378,6 @@ class KomisiController {
   try {
     const { hpLabel } = req.body;
     
-    console.log('=== SEND LINKS DEBUG ===');
-    console.log('Received hpLabel:', hpLabel);
-    
     if (!hpLabel) {
       return res.status(400).json({ 
         success: false, 
@@ -349,9 +385,8 @@ class KomisiController {
       });
     }
     
-    // Get unsent links
+    // Get unsent links (pakai model yang sudah ada)
     const links = await KomisiLink.getUnsentLimited(100);
-    console.log('Found unsent links:', links.length);
     
     if (links.length === 0) {
       return res.json({ 
@@ -360,41 +395,21 @@ class KomisiController {
       });
     }
     
-    // Debug: show first few links
-    console.log('First 3 links:', links.slice(0, 3).map(l => ({
-      id: l.id,
-      link: l.link_produk?.substring(0, 50) + '...',
-      current_label: l.hp_label
-    })));
-    
     // Mark as sent dengan batch info
     const linkIds = links.map(link => link.id);
     const batchId = Date.now();
     
-    console.log('Updating with:');
-    console.log('- Batch ID:', batchId);
-    console.log('- HP Label:', hpLabel);
-    console.log('- Link IDs:', linkIds.slice(0, 5), '...');
+    await KomisiLink.markAsSent(linkIds, batchId);
     
-    // Update dengan HP label yang benar
-    await KomisiLink.markAsSentWithLabel(linkIds, batchId, hpLabel);
-    
-    // Verify update
-    const { getConnection } = require('../database/connection');
-    const connection = getConnection();
-    const [updated] = await connection.execute(
-      'SELECT COUNT(*) as count FROM komisi_links WHERE batch_id = ? AND hp_label = ?',
-      [batchId, hpLabel]
-    );
-    
-    console.log('Verified updated:', updated[0].count, 'rows');
+    // Send FCM to all devices
+    // const fcmResult = await FCMService.sendBatchToAll(batchId, links, hpLabel);
 
     res.json({
       success: true,
       message: `Batch berhasil dikirim untuk ${hpLabel}`,
       linkCount: links.length,
-      hpLabel: hpLabel,
-      batchId: batchId
+      hpLabel: hpLabel
+      // fcmResult: fcmResult
     });
   } catch (error) {
     console.error('Error sending links:', error);
@@ -448,185 +463,6 @@ static async getLatestBatches(req, res) {
   } catch (error) {
     console.error('Error getting latest batches:', error);
     res.status(500).json({ success: false, error: error.message });
-  }
-}
-
-// New method for web viewer - get active batch for specific HP
-static async getActiveBatchForHP(req, res) {
-  try {
-    const { hpName } = req.params;
-    const { getConnection } = require('../database/connection');
-    const connection = getConnection();
-    
-    // Get latest batch for this HP that hasn't been copied
-    const [batches] = await connection.execute(
-      `SELECT id, batch_id, hp_label, link_produk, sent_at
-       FROM komisi_links 
-       WHERE hp_label = ?
-       AND batch_id IS NOT NULL
-       AND copied_at IS NULL
-       ORDER BY sent_at DESC
-       LIMIT 100`,
-      [hpName.toUpperCase()]
-    );
-    
-    if (batches.length === 0) {
-      return res.json({
-        success: true,
-        batch: null,
-        message: 'Tidak ada batch aktif'
-      });
-    }
-    
-    // Group by batch_id
-    const batchId = batches[0].batch_id;
-    const links = batches.map(row => row.link_produk);
-    
-    res.json({
-      success: true,
-      batch: {
-        id: batchId,
-        hp_label: batches[0].hp_label,
-        links: links,
-        created_at: batches[0].sent_at,
-        count: links.length
-      }
-    });
-  } catch (error) {
-    console.error('Error getting active batch:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-}
-
-// Mark batch as copied
-static async markBatchAsCopied(req, res) {
-  try {
-    const { batchId } = req.body;
-    const { getConnection } = require('../database/connection');
-    const connection = getConnection();
-    
-    await connection.execute(
-      'UPDATE komisi_links SET copied_at = NOW() WHERE batch_id = ?',
-      [batchId]
-    );
-    
-    res.json({
-      success: true,
-      message: 'Batch marked as copied'
-    });
-  } catch (error) {
-    console.error('Error marking batch as copied:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-}
-
-static async sendToWhatsApp(req, res) {
-  try {
-    const { hpLabel } = req.body;
-    
-    if (!hpLabel) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'HP Label harus dipilih' 
-      });
-    }
-    
-    // Get phone number
-    const hpData = await HPNumber.getByLabel(hpLabel);
-    if (!hpData) {
-      return res.status(404).json({
-        success: false,
-        error: `Nomor telepon untuk ${hpLabel} tidak ditemukan`
-      });
-    }
-    
-    // Get unsent links
-    const links = await KomisiLink.getUnsentLimited(100);
-    
-    if (links.length === 0) {
-      return res.json({ 
-        success: false, 
-        message: 'Tidak ada link yang belum dikirim' 
-      });
-    }
-    
-    // Format links for WhatsApp
-    const greeting = `Halo, berikut ${links.length} link komisi untuk ${hpLabel}:\n\n`;
-    const linksList = links.map((link, index) => 
-      `${index + 1}. ${link.link_produk}`
-    ).join('\n');
-    const closing = `\n\nTotal: ${links.length} link`;
-    
-    const message = greeting + linksList + closing;
-    
-    // Encode message for URL
-    const encodedMessage = encodeURIComponent(message);
-    
-    // Create WhatsApp URL
-    const whatsappUrl = `https://wa.me/${hpData.phone_number}?text=${encodedMessage}`;
-    
-    // Mark links as sent
-    const linkIds = links.map(link => link.id);
-    const batchId = Date.now();
-    await KomisiLink.markAsSentWithLabel(linkIds, batchId, hpLabel);
-    
-    res.json({
-      success: true,
-      message: `WhatsApp siap dikirim untuk ${hpLabel}`,
-      whatsappUrl: whatsappUrl,
-      linkCount: links.length,
-      phoneNumber: hpData.phone_number.substring(0, 6) + '****' // Hide partial number
-    });
-    
-  } catch (error) {
-    console.error('Error sending to WhatsApp:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
-    });
-  }
-}
-
-static async getHPNumbers(req, res) {
-  try {
-    const numbers = await HPNumber.getAll();
-    res.json({
-      success: true,
-      numbers: numbers
-    });
-  } catch (error) {
-    console.error('Error getting HP numbers:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-}
-
-static async updateHPNumber(req, res) {
-  try {
-    const { label, phoneNumber, name } = req.body;
-    
-    if (!label || !phoneNumber) {
-      return res.status(400).json({ 
-        error: 'Label dan nomor telepon harus diisi' 
-      });
-    }
-    
-    // Validate phone number format
-    const cleanNumber = phoneNumber.replace(/\D/g, '');
-    if (!cleanNumber.startsWith('62') || cleanNumber.length < 11) {
-      return res.status(400).json({ 
-        error: 'Format nomor harus 62xxx (contoh: 6281234567890)' 
-      });
-    }
-    
-    await HPNumber.update(label, cleanNumber, name);
-    
-    res.json({
-      success: true,
-      message: `Nomor ${label} berhasil diupdate`
-    });
-  } catch (error) {
-    console.error('Error updating HP number:', error);
-    res.status(500).json({ error: 'Internal server error' });
   }
 }
 }

@@ -24,14 +24,4 @@ router.post('/send-to-project1', CSVController.sendToProject1);
 router.post('/send-links', KomisiController.sendLinks);
 router.get('/latest-batches', KomisiController.getLatestBatches);
 
-// Routes for Web Viewer
-router.get('/viewer/:hpName', KomisiController.getActiveBatchForHP);
-router.post('/viewer/mark-copied', KomisiController.markBatchAsCopied);
-
-// Tambahkan di bawah routes lain (sebelum module.exports):
-// WhatsApp routes
-router.post('/send-whatsapp', KomisiController.sendToWhatsApp);
-router.get('/hp-numbers', KomisiController.getHPNumbers);
-router.put('/hp-numbers', KomisiController.updateHPNumber);
-
 module.exports = router;

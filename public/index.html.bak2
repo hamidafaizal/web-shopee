@@ -538,14 +538,6 @@
                     <!-- Batch boxes will appear here -->
                 </div>
             </div>
-
-            <!-- Manage HP Section -->
-            <div style="margin-top: 2rem; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 10px;">
-                <h4 style="margin-bottom: 1rem;">⚙️ Pengaturan Nomor WhatsApp</h4>
-                <button onclick="showHPSettings()" class="btn-secondary" style="padding: 0.5rem 1rem;">
-                    <i class="bi bi-gear"></i> Kelola Nomor HP
-                </button>
-            </div>
         </div>
     </div>
 
@@ -893,7 +885,11 @@
                             <div class="batch-header">
                                 <h4>Batch ${batch.batchNumber} (${batch.links.length} link)</h4>
                                 <select onchange="updateBatchLabel(${batch.batchNumber}, this.value)">
-                                    ${generateHPOptions(batch.label)}
+                                    <option value="HP 1" ${batch.label === 'HP 1' ? 'selected' : ''}>HP 1</option>
+                                    <option value="HP 2" ${batch.label === 'HP 2' ? 'selected' : ''}>HP 2</option>
+                                    <option value="HP 3" ${batch.label === 'HP 3' ? 'selected' : ''}>HP 3</option>
+                                    <option value="HP 4" ${batch.label === 'HP 4' ? 'selected' : ''}>HP 4</option>
+                                    <option value="HP 5" ${batch.label === 'HP 5' ? 'selected' : ''}>HP 5</option>
                                 </select>
                             </div>
                             <div class="scroll-box">
@@ -902,33 +898,22 @@
                                         <li>
                                             <span>
                                                 <span class="link-number">${batch.startIndex + linkIndex}.</span>
-                                                ${link.link_produk || link}
+                                                ${link.link_produk}
                                             </span>
                                         </li>
                                     `).join('')}
                                 </ul>
                             </div>
                             <button style="margin-top: 10px;" onclick="sendToHP(${batch.batchNumber}, '${batch.label}')">
-                                <i class="bi bi-whatsapp"></i> Kirim WA
+                                <i class="bi bi-send"></i> KIRIM
                             </button>
                         </div>
                     `).join('');
                 }
             } catch (error) {
                 console.error('Error loading batches:', error);
-                showAlert('danger', 'Gagal memuat data: ' + error.message);
+                showAlert('danger', 'Gagal memuat data');
             }
-        }
-
-        // Generate HP options 1-30
-        function generateHPOptions(selectedLabel) {
-            let options = '';
-            for (let i = 1; i <= 30; i++) {
-                const label = `HP ${i}`;
-                const selected = label === selectedLabel ? 'selected' : '';
-                options += `<option value="${label}" ${selected}>${label}</option>`;
-            }
-            return options;
         }
 
         async function confirmThreshold() {
@@ -996,7 +981,7 @@
 
         async function sendToHP(batchNumber, label) {
             try {
-                const response = await fetch(`${API_URL}/send-whatsapp`, {
+                const response = await fetch(`${API_URL}/send-links`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ hpLabel: label })
@@ -1006,57 +991,9 @@
                 
                 if (result.success) {
                     showAlert('success', result.message);
-                    
-                    // Open WhatsApp in new tab
-                    window.open(result.whatsappUrl, '_blank');
-                    
-                    // Reload batches after 2 seconds
-                    setTimeout(() => {
-                        loadBatches();
-                    }, 2000);
+                    loadBatches(); // Refresh batches
                 } else {
-                    showAlert('danger', result.error || 'Gagal mengirim ke WhatsApp');
-                }
-            } catch (error) {
-                showAlert('danger', 'Error: ' + error.message);
-            }
-        }
-
-        async function showHPSettings() {
-            try {
-                const response = await fetch(`${API_URL}/hp-numbers`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Simple prompt untuk update nomor
-                    const selectedHP = prompt('Pilih HP yang akan diupdate (contoh: HP 1):');
-                    if (!selectedHP) return;
-                    
-                    const hpData = data.numbers.find(n => n.label === selectedHP);
-                    if (!hpData) {
-                        showAlert('danger', 'HP tidak ditemukan');
-                        return;
-                    }
-                    
-                    const newNumber = prompt(`Nomor WA untuk ${selectedHP} (format: 62xxx):`, hpData.phone_number);
-                    if (!newNumber) return;
-                    
-                    // Update nomor
-                    const updateResponse = await fetch(`${API_URL}/hp-numbers`, {
-                        method: 'PUT',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            label: selectedHP,
-                            phoneNumber: newNumber
-                        })
-                    });
-                    
-                    const updateResult = await updateResponse.json();
-                    if (updateResult.success) {
-                        showAlert('success', updateResult.message);
-                    } else {
-                        showAlert('danger', updateResult.error);
-                    }
+                    showAlert('danger', result.error || 'Gagal mengirim batch');
                 }
             } catch (error) {
                 showAlert('danger', 'Error: ' + error.message);

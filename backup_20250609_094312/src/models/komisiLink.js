@@ -49,19 +49,6 @@ class KomisiLink {
     return result;
   }
   
-  static async markAsSentWithLabel(ids, batchId, hpLabel) {
-    const connection = getConnection();
-    const placeholders = ids.map(() => '?').join(',');
-    const query = `
-      UPDATE komisi_links 
-      SET sent_at = NOW(), batch_id = ?, hp_label = ? 
-      WHERE id IN (${placeholders})
-    `;
-    const params = [batchId, hpLabel, ...ids];
-    const [result] = await connection.execute(query, params);
-    return result;
-  }
-  
   static async getUnsentLimited(limit = 100) {
     const connection = getConnection();
     const [rows] = await connection.execute(
