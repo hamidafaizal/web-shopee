@@ -5,6 +5,7 @@ const path = require('path');
 require('dotenv').config();
 
 const komisiRoutes = require('./src/routes/komisi');
+const komregRoutes = require('./src/routes/komreg');
 const { connectDB } = require('./src/database/connection');
 
 const app = express();
@@ -19,6 +20,7 @@ app.use('/temp', express.static(path.join(__dirname, 'public/temp')));
 
 // Routes
 app.use('/api', komisiRoutes);
+app.use('/api', komregRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
