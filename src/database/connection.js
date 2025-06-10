@@ -73,6 +73,20 @@ async function createTables() {
     
     await connection.execute(createMobileDevicesTable);
     
+    // Create hp_numbers table
+    const createHPNumbersTable = `
+      CREATE TABLE IF NOT EXISTS hp_numbers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        label VARCHAR(20) UNIQUE NOT NULL,
+        phone_number VARCHAR(20) NOT NULL,
+        name VARCHAR(100) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_label (label)
+      )
+    `;
+    await connection.execute(createHPNumbersTable);
+    
     // Create config table
     const createConfigTable = `
       CREATE TABLE IF NOT EXISTS komisi_config (

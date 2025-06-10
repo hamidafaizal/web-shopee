@@ -892,7 +892,7 @@
                         <div class="batch-box">
                             <div class="batch-header">
                                 <h4>Batch ${batch.batchNumber} (${batch.links.length} link)</h4>
-                                <select onchange="updateBatchLabel(${batch.batchNumber}, this.value)">
+                                <select id="dropdown-hp-${batch.batchNumber}" onchange="updateBatchLabel(${batch.batchNumber}, this.value)">
                                     ${generateHPOptions(batch.label)}
                                 </select>
                             </div>
@@ -908,7 +908,7 @@
                                     `).join('')}
                                 </ul>
                             </div>
-                            <button style="margin-top: 10px;" onclick="sendToHP(${batch.batchNumber}, '${batch.label}')">
+                            <button style="margin-top: 10px;" onclick="sendToHP(${batch.batchNumber})">
                                 <i class="bi bi-whatsapp"></i> Kirim WA
                             </button>
                         </div>
@@ -994,29 +994,36 @@
             }
         }
 
-        async function sendToHP(batchNumber, label) {
+        async function sendToHP(batchNumber) {
+            const selectEl = document.querySelector(`#dropdown-hp-${batchNumber}`);
+            const label = selectEl ? selectEl.value : null;
+
+            if (!label) {
+                showAlert('danger', 'Label HP tidak ditemukan');
+                return;
+            }
+
             try {
                 const response = await fetch(`${API_URL}/send-whatsapp`, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ hpLabel: label })
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (result.success) {
-                    showAlert('success', result.message);
-                    
-                    // Open WhatsApp in new tab
-                    window.open(result.whatsappUrl, '_blank');
-                    
-                    // Reload batches after 2 seconds
-                    setTimeout(() => {
-                        loadBatches();
-                    }, 2000);
+                    showAlert('success', `Link berhasil dikirim ke ${label}`);
+
+                    // 🟢 Tambahkan ini agar langsung buka WhatsApp Web
+                    if (result.whatsappUrl) {
+                        window.open(result.whatsappUrl, "_blank");
+                    }
+
                 } else {
-                    showAlert('danger', result.error || 'Gagal mengirim ke WhatsApp');
+                    showAlert('danger', result.error || 'Gagal mengirim');
                 }
+
             } catch (error) {
                 showAlert('danger', 'Error: ' + error.message);
             }

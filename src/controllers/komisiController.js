@@ -551,19 +551,13 @@ static async sendToWhatsApp(req, res) {
     }
     
     // Format links for WhatsApp
-    const greeting = `Halo, berikut ${links.length} link komisi untuk ${hpLabel}:\n\n`;
-    const linksList = links.map((link, index) => 
-      `${index + 1}. ${link.link_produk}`
-    ).join('\n');
-    const closing = `\n\nTotal: ${links.length} link`;
-    
-    const message = greeting + linksList + closing;
+    const message = links.map(link => link.link_produk).join('\n');
     
     // Encode message for URL
     const encodedMessage = encodeURIComponent(message);
     
     // Create WhatsApp URL
-    const whatsappUrl = `https://wa.me/${hpData.phone_number}?text=${encodedMessage}`;
+    const whatsappUrl = `https://web.whatsapp.com/send?phone=${hpData.phone_number}&text=${encodedMessage}`;
     
     // Mark links as sent
     const linkIds = links.map(link => link.id);
