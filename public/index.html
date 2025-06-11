@@ -566,8 +566,6 @@
         <div class="panel active" id="upload">
             <h2><i class="bi bi-file-earmark-text"></i> Upload File Riset</h2>
             
-            <input type="text" id="kategoriInput" placeholder="Nama Kategori (contoh: ELEKTRONIK)" value="HASIL_FILTER" />
-            
             <div class="stats-row">
                 <div class="stat-box">
                     <h3 id="rankFrom">1</h3>
@@ -620,9 +618,7 @@
                         <table style="width: 100%; color: white;">
                             <thead>
                                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.2);">
-                                    <th style="padding: 10px; text-align: left;">
-                                        <input type="checkbox" id="checkAll" onchange="toggleAllCheckboxes()">
-                                    </th>
+                                    <!-- Hapus th untuk checkbox -->
                                     <th style="padding: 10px; text-align: left;">No</th>
                                     <th style="padding: 10px; text-align: left;">Link Produk</th>
                                     <th style="padding: 10px; text-align: left;">Tipe</th>
@@ -635,7 +631,28 @@
                         </table>
                     </div>
                     
+                    <div id="copyButtonsContainer" style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                        <!-- Buttons akan di-generate oleh JavaScript -->
+                    </div>
+                    
+                    <!-- Tambahkan setelah copyButtonsContainer -->
+                    <div id="thresholdContainer" style="display: none; margin-top: 20px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 10px;">
+                        <h5 style="margin-bottom: 15px;">🎯 Filter Komisi</h5>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="number" id="thresholdInput" placeholder="Minimal komisi (%)" min="0" max="100" style="flex: 1;">
+                            <button onclick="applyThreshold()" style="padding: 12px 24px;">
+                                <i class="bi bi-funnel"></i> Apply Filter
+                            </button>
+                        </div>
+                        <p style="margin-top: 10px; font-size: 14px; opacity: 0.7;">
+                            Masukkan minimal persentase komisi (contoh: 5 untuk minimal 5%)
+                        </p>
+                    </div>
+                    
                     <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <button id="syncBtn" onclick="syncWithKomreg()" style="flex: 1; display: none;">
+                            <i class="bi bi-arrow-repeat"></i> Sync
+                        </button>
                         <button id="sendBtn" onclick="sendToKomisi()" style="flex: 1;">
                             <i class="bi bi-send"></i> Kirim
                         </button>
@@ -658,10 +675,15 @@
                     <input type="file" id="komreg-fileInput" multiple accept="image/*" hidden>
                 </div>
                 <div class="image-preview" id="komreg-imagePreview"></div>
+                <!-- Ganti bagian action-buttons di KOMREG -->
                 <div class="action-buttons">
-                    <button id="komreg-clearBtn" class="btn btn-secondary">Hapus Semua</button>
+                    <button id="komreg-clearBtn" class="btn btn-danger" onclick="confirmClearKomreg()">
+                        <i class="bi bi-trash"></i> Reset Data
+                    </button>
                     <button id="komreg-processBtn" class="btn btn-primary">Proses Analisa</button>
                 </div>
+                <!-- Hapus atau comment tombol Hapus Semua -->
+                <!-- <button id="komreg-clearBtn" class="btn btn-secondary">Hapus Semua</button> -->
             </section>
             <!-- Results Section -->
             <section class="results-section" id="komreg-resultsSection" style="display: none;">
@@ -677,10 +699,6 @@
                         <tbody id="komreg-resultsBody">
                         </tbody>
                     </table>
-                </div>
-                <div class="export-buttons">
-                    <button id="komreg-copyBtn" class="btn btn-secondary">Salin Hasil</button>
-                    <button id="komreg-exportBtn" class="btn btn-secondary">Export CSV</button>
                 </div>
             </section>
             <!-- Loading Overlay -->
@@ -745,6 +763,8 @@
         let currentThreshold = 100;
         let myChart = null;
         let filteredResults = [];
+        let komregResults = []; // Untuk menyimpan hasil KOMREG
+        let syncedResults = []; // Untuk menyimpan hasil sync
         
         // Tab navigation
         const tabs = document.querySelectorAll('.tab-btn');
@@ -860,7 +880,7 @@
             uploadedFiles.forEach(file => {
                 formData.append('files', file);
             });
-            formData.append('kategori', document.getElementById('kategoriInput').value || 'HASIL_FILTER');
+            formData.append('kategori', 'HASIL_FILTER'); // Default value
             formData.append('rankFrom', document.getElementById('rankFromInput').value || 1);
             formData.append('rankTo', document.getElementById('rankToInput').value || 100);
             
@@ -902,10 +922,6 @@
             const tbody = document.getElementById('resultTableBody');
             tbody.innerHTML = filteredResults.map((item, index) => `
                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
-                    <td style="padding: 10px;">
-                        <input type="checkbox" class="result-checkbox" data-index="${index}" 
-                               ${item.checked ? 'checked' : ''} onchange="updateCheckState(${index})">
-                    </td>
                     <td style="padding: 10px;">${index + 1}</td>
                     <td style="padding: 10px; color: #21cbf3;">${item.link}</td>
                     <td style="padding: 10px;">
@@ -917,38 +933,80 @@
                     <td style="padding: 10px; opacity: 0.7; font-size: 12px;">${item.source}</td>
                 </tr>
             `).join('');
+
+            // Generate copy buttons
+            generateCopyButtons(filteredResults.length);
+            // Check sync availability
+            checkSyncAvailability();
         }
 
-        function toggleAllCheckboxes() {
-            const checkAll = document.getElementById('checkAll').checked;
-            const checkboxes = document.querySelectorAll('.result-checkbox');
-            checkboxes.forEach(cb => {
-                cb.checked = checkAll;
-                const index = parseInt(cb.dataset.index);
-                if (filteredResults[index]) {
-                    filteredResults[index].checked = checkAll;
-                }
-            });
-            console.log('Toggle all:', checkAll, 'Total checked:', filteredResults.filter(r => r.checked).length);
-        }
-
-        function updateCheckState(index) {
-            const checkbox = document.querySelector(`[data-index="${index}"]`);
-            if (checkbox && filteredResults[index]) {
-                filteredResults[index].checked = checkbox.checked;
-                console.log(`Updated index ${index}:`, filteredResults[index].checked);
+        // Function untuk check apakah bisa sync
+        function checkSyncAvailability() {
+            const syncBtn = document.getElementById('syncBtn');
+            if (!syncBtn) return;
+            if (filteredResults.length > 0 && komregResults.length === filteredResults.length) {
+                syncBtn.style.display = 'block';
+                syncBtn.disabled = false;
+            } else {
+                syncBtn.style.display = 'none';
             }
         }
 
+        function generateCopyButtons(totalCount) {
+            const container = document.getElementById('copyButtonsContainer');
+            container.innerHTML = '';
+            
+            const batchSize = 100;
+            const totalBatches = Math.ceil(totalCount / batchSize);
+            
+            for (let i = 0; i < totalBatches; i++) {
+                const start = i * batchSize + 1;
+                const end = Math.min((i + 1) * batchSize, totalCount);
+                
+                const button = document.createElement('button');
+                button.className = 'btn-secondary';
+                button.style.cssText = 'padding: 8px 16px; font-size: 14px;';
+                button.innerHTML = `<i class="bi bi-clipboard"></i> Copy ${start}-${end}`;
+                button.onclick = () => copyBatchLinks(start - 1, end);
+                
+                container.appendChild(button);
+            }
+        }
+
+        function copyBatchLinks(startIndex, endIndex) {
+            const links = filteredResults.slice(startIndex, endIndex)
+                .map(item => item.link)
+                .join('\n');
+            
+            navigator.clipboard.writeText(links).then(() => {
+                showAlert('success', `Link ${startIndex + 1}-${endIndex} berhasil dicopy!`);
+            }).catch(() => {
+                // Fallback
+                const textarea = document.createElement('textarea');
+                textarea.value = links;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showAlert('success', `Link ${startIndex + 1}-${endIndex} berhasil dicopy!`);
+            });
+        }
+
         async function sendToKomisi() {
-            // Debug log
-            console.log('All results:', filteredResults);
-            console.log('Checked items:', filteredResults.filter(item => item.checked));
+            let dataToSend;
             
-            const checkedItems = filteredResults.filter(item => item.checked === true);
+            // Cek apakah sudah sync atau belum
+            if (syncedResults.length > 0) {
+                // Kirim data yang sudah di-sync dan filter
+                dataToSend = syncedResults;
+            } else {
+                // Fallback ke cara lama (tanpa sync)
+                showAlert('danger', 'Silakan sync dengan KOMREG terlebih dahulu!');
+                return;
+            }
             
-            if (checkedItems.length === 0) {
-                showAlert('danger', 'Pilih minimal 1 link untuk dikirim');
+            if (dataToSend.length === 0) {
+                showAlert('danger', 'Tidak ada data untuk dikirim!');
                 return;
             }
 
@@ -960,18 +1018,14 @@
                 const response = await fetch(`${API_URL}/send-to-project1`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ links: checkedItems })
+                    body: JSON.stringify({ links: dataToSend })
                 });
                 
                 const result = await response.json();
                 
                 if (result.success) {
                     showAlert('success', result.message);
-                    
-                    // Reset form
                     resetForm();
-                    
-                    // Switch to filter tab after delay
                     setTimeout(() => {
                         document.querySelector('[data-tab="filter"]').click();
                     }, 1500);
@@ -990,24 +1044,32 @@
         function resetForm() {
             uploadedFiles = [];
             filteredResults = [];
-            
+            syncedResults = []; // Reset sync results
+            komregResults = []; // Reset komreg results
+
             // Reset file input if exists
             const fileInput = document.getElementById('csvFiles');
             if (fileInput) {
                 fileInput.value = '';
             }
-            
+
             // Hide sections
             const fileList = document.getElementById('fileList');
             if (fileList) {
                 fileList.style.display = 'none';
             }
-            
+
             const resultsSection = document.getElementById('resultsSection');
             if (resultsSection) {
                 resultsSection.style.display = 'none';
             }
-            
+
+            // Hide threshold container
+            const thresholdContainer = document.getElementById('thresholdContainer');
+            if (thresholdContainer) {
+                thresholdContainer.style.display = 'none';
+            }
+
             // Reset dropzone
             const dropZone = document.getElementById('dropZone');
             if (dropZone) {
@@ -1017,12 +1079,23 @@
                     <small>Support multiple files</small>
                 `;
             }
-            
-            // Reset button
+
+            // Reset buttons
             const processBtn = document.getElementById('processBtn');
             if (processBtn) {
                 processBtn.disabled = false;
                 processBtn.innerHTML = '<i class="bi bi-gear"></i> Proses';
+            }
+
+            const sendBtn = document.getElementById('sendBtn');
+            if (sendBtn) {
+                sendBtn.style.backgroundColor = ''; // Reset color
+            }
+
+            // Hide sync button
+            const syncBtn = document.getElementById('syncBtn');
+            if (syncBtn) {
+                syncBtn.style.display = 'none';
             }
         }
 
@@ -1048,7 +1121,7 @@
                         tooltip: { enabled: false },
                         legend: { display: false }
                     }
-                }
+                },
             });
             
             document.getElementById('percentageText').textContent = percentage + '%';
@@ -1257,6 +1330,47 @@
             }
         }
 
+        // Alert function
+        function showAlert(type, message) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertId = 'alert-' + Date.now();
+            
+            const iconMap = {
+                success: 'check-circle',
+                danger: 'x-circle',
+                info: 'info-circle'
+            };
+            
+            const alertHtml = `
+                <div id="${alertId}" class="alert alert-${type}">
+                    <i class="bi bi-${iconMap[type]}"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            alertContainer.innerHTML = alertHtml;
+            
+            setTimeout(() => {
+                const alert = document.getElementById(alertId);
+                if (alert) {
+                    alert.style.animation = 'slideOut 0.3s ease-in forwards';
+                    setTimeout(() => alert.remove(), 300);
+                }
+            }, 5000);
+        }
+
+        // Add slideOut animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideOut {
+                to {
+                    transform: translateX(-100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
         // KOMREG Tab Script
         let komregInitialized = false;
         function initKomregPanel() {
@@ -1275,8 +1389,6 @@
             const processBtn = document.getElementById('komreg-processBtn');
             const resultsSection = document.getElementById('komreg-resultsSection');
             const resultsBody = document.getElementById('komreg-resultsBody');
-            const copyBtn = document.getElementById('komreg-copyBtn');
-            const exportBtn = document.getElementById('komreg-exportBtn');
             const loadingOverlay = document.getElementById('komreg-loadingOverlay');
 
             // Event Listeners
@@ -1287,8 +1399,6 @@
             fileInput.addEventListener('change', handleFileSelect);
             clearBtn.addEventListener('click', clearAllImages);
             processBtn.addEventListener('click', processImages);
-            copyBtn.addEventListener('click', copyResults);
-            exportBtn.addEventListener('click', exportCSV);
 
             // Drag and Drop handlers
             function handleDragOver(e) {
@@ -1402,6 +1512,7 @@
 
             // Display results
             function displayResults(results) {
+                komregResults = results; // Simpan hasil KOMREG ke global variable
                 resultsBody.innerHTML = '';
                 results.forEach(result => {
                     const row = document.createElement('tr');
@@ -1412,39 +1523,24 @@
                     resultsBody.appendChild(row);
                 });
                 resultsSection.style.display = 'block';
-            }
 
-            // Copy results to clipboard
-            function copyResults() {
-                if (komregProcessedResults.length === 0) return;
-                let text = 'No Produk\tKomisi\n';
-                komregProcessedResults.forEach(result => {
-                    text += `${result.productNumber}\t${result.komisi}\n`;
-                });
-                navigator.clipboard.writeText(text).then(() => {
-                    alert('Hasil berhasil disalin!');
-                }).catch(err => {
-                    console.error('Error copying:', err);
-                    alert('Gagal menyalin hasil');
-                });
-            }
+                // Update global variable dan check sync
+                komregProcessedResults = results;
+                komregResults = results; // Update global
+                checkSyncAvailability(); // Check apakah bisa sync
 
-            // Export to CSV
-            function exportCSV() {
-                if (komregProcessedResults.length === 0) return;
-                let csv = 'No Produk,Komisi\n';
-                komregProcessedResults.forEach(result => {
-                    csv += `${result.productNumber},${result.komisi}\n`;
-                });
-                const blob = new Blob([csv], { type: 'text/csv' });
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `komreg_results_${new Date().getTime()}.csv`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
+                // Tambahkan info text setelah hasil analisa
+                const infoText = document.createElement('div');
+                infoText.style.cssText = 'margin-top: 15px; padding: 15px; background: rgba(33,150,243,0.2); border-radius: 8px; text-align: center;';
+                infoText.innerHTML = `
+                    <i class="bi bi-info-circle"></i> 
+                    <strong>Data tersimpan!</strong> 
+                    Silakan kembali ke tab "Upload File Riset" untuk melakukan Sync.
+                `;
+                resultsSection.appendChild(infoText);
+
+                // Update indikator tab KOMREG
+                updateKomregTabIndicator();
             }
 
             // Show/hide loading overlay
@@ -1462,6 +1558,133 @@
 
         // Trigger inisialisasi saat tab KOMREG diklik
         document.querySelector('[data-tab="komreg"]').addEventListener('click', initKomregPanel);
+
+        function syncWithKomreg() {
+            if (filteredResults.length !== komregResults.length) {
+                showAlert('danger', 'Jumlah data tidak sama! Pastikan semua link sudah di-screenshot.');
+                return;
+            }
+            
+            // Gabungkan data
+            syncedResults = filteredResults.map((item, index) => ({
+                ...item,
+                komisi: komregResults[index].komisi
+            }));
+            
+            // Tampilkan threshold container
+            document.getElementById('thresholdContainer').style.display = 'block';
+            
+            // Update tampilan tabel dengan kolom komisi
+            updateTableWithKomisi();
+            
+            showAlert('success', 'Data berhasil di-sync! Silakan atur threshold komisi.');
+        }
+
+        function updateTableWithKomisi() {
+            const tbody = document.getElementById('resultTableBody');
+            
+            // Update header dulu
+            const thead = tbody.closest('table').querySelector('thead tr');
+            if (!thead.innerHTML.includes('Komisi')) {
+                thead.innerHTML += '<th style="padding: 10px; text-align: left;">Komisi</th>';
+            }
+            
+            // Update body
+            tbody.innerHTML = syncedResults.map((item, index) => `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <td style="padding: 10px;">${index + 1}</td>
+                    <td style="padding: 10px; color: #21cbf3;">${item.link}</td>
+                    <td style="padding: 10px;">
+                        <span style="background: ${item.type === 'Iklan' ? 'rgba(76,175,80,0.3)' : 'rgba(33,150,243,0.3)'}; 
+                                     padding: 3px 10px; border-radius: 15px; font-size: 12px;">
+                            ${item.type}
+                        </span>
+                    </td>
+                    <td style="padding: 10px; opacity: 0.7; font-size: 12px;">${item.source}</td>
+                    <td style="padding: 10px; color: #4caf50; font-weight: bold;">${item.komisi}</td>
+                </tr>
+            `).join('');
+        }
+
+        function applyThreshold() {
+            const threshold = parseFloat(document.getElementById('thresholdInput').value);
+            
+            if (isNaN(threshold) || threshold < 0) {
+                showAlert('danger', 'Masukkan nilai threshold yang valid!');
+                return;
+            }
+            
+            // Filter berdasarkan threshold
+            const beforeCount = syncedResults.length;
+            syncedResults = syncedResults.filter(item => {
+                // Parse komisi (hilangkan % dan "Tidak ada")
+                const komisiValue = item.komisi === 'Tidak ada' ? 0 : parseFloat(item.komisi.replace('%', ''));
+                return komisiValue >= threshold;
+            });
+            
+            const afterCount = syncedResults.length;
+            const removedCount = beforeCount - afterCount;
+            
+            // Update tampilan
+            updateTableWithKomisi();
+            
+            // Update counter
+            document.getElementById('totalCount').textContent = afterCount;
+            
+            // Hide sync button, show send button prominently
+            document.getElementById('syncBtn').style.display = 'none';
+            document.getElementById('sendBtn').style.backgroundColor = '#4caf50';
+            
+            showAlert('success', `Filter berhasil! ${removedCount} link dihapus. Tersisa ${afterCount} link dengan komisi ≥ ${threshold}%`);
+        }
+
+        function updateKomregTabIndicator() {
+            const komregTab = document.querySelector('[data-tab="komreg"]');
+            if (komregResults.length > 0) {
+                komregTab.innerHTML = `<i class="bi bi-collection"></i> KOMREG (${komregResults.length})`;
+            } else {
+                komregTab.innerHTML = `<i class="bi bi-collection"></i> KOMREG`;
+            }
+        }
+
+        function confirmClearKomreg() {
+            if (komregResults.length > 0) {
+                if (confirm(`Anda memiliki ${komregResults.length} data komisi. Yakin ingin reset? Data akan hilang!`)) {
+                    clearAllImages();
+                    komregResults = [];
+                    document.getElementById('komreg-resultsSection').style.display = 'none';
+                    updateKomregTabIndicator();
+                    checkSyncAvailability();
+                    updateKomregStatus();
+                }
+            } else {
+                clearAllImages();
+            }
+        }
+
+        function updateKomregStatus() {
+            let statusHtml = '';
+            if (komregResults.length > 0) {
+                statusHtml = `
+                    <div style="margin-bottom: 15px; padding: 10px; background: rgba(76,175,80,0.2); border-radius: 8px;">
+                        <i class="bi bi-check-circle"></i> 
+                        Total data komisi: <strong>${komregResults.length}</strong> produk
+                        ${filteredResults.length > 0 ? ` (Target: ${filteredResults.length} produk)` : ''}
+                    </div>
+                `;
+            }
+            const resultsSection = document.getElementById('komreg-resultsSection');
+            if (!resultsSection) return;
+            const existingStatus = resultsSection.querySelector('.status-indicator');
+            if (existingStatus) {
+                existingStatus.innerHTML = statusHtml;
+            } else {
+                const statusDiv = document.createElement('div');
+                statusDiv.className = 'status-indicator';
+                statusDiv.innerHTML = statusHtml;
+                resultsSection.insertBefore(statusDiv, resultsSection.firstChild);
+            }
+        }
     </script>
 </body>
 </html>

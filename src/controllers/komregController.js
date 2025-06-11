@@ -20,25 +20,29 @@ function parseGeminiResponse(text) {
   const lines = text.split('\n').filter(line => line.trim());
   
   lines.forEach(line => {
-    const match = line.match(/Produk\s*\d+\s*:\s*(.+)/i);
+    // Cari pattern "Produk X: Y%" atau variasi lainnya
+    const match = line.match(/Produk\s*(\d+)\s*:\s*(\d+)%/i) || 
+                  line.match(/Produk\s*(\d+)\s*:\s*(\d+)\s*%/i) ||
+                  line.match(/Produk\s*(\d+)\s*:\s*Tidak ada/i);
+    
     if (match) {
-      let commission = match[1].trim();
-      if (commission.toLowerCase().includes('tidak ada')) {
-        commission = 'Tidak ada';
-      } else {
-        const percentMatch = commission.match(/(\d+)\s*%/);
-        if (percentMatch) {
-          commission = percentMatch[1] + '%';
-        } else if (commission.match(/^\d+$/)) {
-          commission = commission + '%';
-        }
+      if (match[0].toLowerCase().includes('tidak ada')) {
+        results.push('Tidak ada');
+      } else if (match[2]) {
+        results.push(match[2] + '%');
       }
-      results.push(commission);
     }
   });
+  
+  // Jika parsing gagal, coba cari angka dengan %
   if (results.length === 0) {
-    results.push('Tidak ada');
+    const percentMatches = text.matchAll(/(\d+)%/g);
+    for (const match of percentMatches) {
+      results.push(match[1] + '%');
+    }
   }
+  
+  console.log('Parsed results:', results); // Untuk debugging
   return results;
 }
 
@@ -59,24 +63,35 @@ exports.processKomregImages = async (req, res) => {
       const imagePath = file.path;
       try {
         const imagePart = fileToGenerativePart(imagePath, file.mimetype);
-        const prompt = `Analisa screenshot Shopee ini dan identifikasi SEMUA produk beserta nilai komisinya.
+        const prompt = `Analisa screenshot produk Shopee ini.
 
-Instruksi:
-1. Cari nilai komisi (biasanya "Komisi hingga X%" atau simbol 💰 diikuti persentase)
-2. Hitung SEMUA produk dari atas ke bawah
-3. Jika tidak ada komisi untuk suatu produk, tulis "Tidak ada"
-4. Perhatikan badge orange/merah yang mungkin berisi info komisi
+PERHATIKAN:
+1. Setiap produk memiliki gambar produk di sebelah kiri
+2. Informasi komisi terletak di bawah nama produk, dengan format:
+   - "Komisi hingga X%" (teks oranye)
+   - Badge "KOMISIXTRA" biasanya muncul bersamaan
+3. Format harga dalam Rupiah (Rp)
+4. Ada informasi terjual di sebelah kanan
 
-Format jawaban HARUS seperti ini:
+INSTRUKSI:
+- Identifikasi SEMUA produk dalam screenshot
+- Baca nilai komisi yang tertulis "Komisi hingga X%"
+- Jika tidak ada teks "Komisi hingga", berarti produk tersebut tidak ada komisi
+- Hitung produk dari ATAS ke BAWAH
+
+Format jawaban WAJIB:
 Produk 1: [nilai]%
 Produk 2: [nilai]%
 Produk 3: [nilai]%
-(lanjutkan untuk semua produk)
+(dan seterusnya untuk semua produk yang terlihat)
 
-Contoh:
-Produk 1: 15%
-Produk 2: Tidak ada
-Produk 3: 8%`;
+Contoh berdasarkan yang terlihat:
+Produk 1: 17%
+Produk 2: 3%
+Produk 3: 8%
+Produk 4: 1%
+
+Sekarang analisa screenshot ini:`;
 
         const result = await model.generateContent([prompt, imagePart]);
         const response = await result.response;

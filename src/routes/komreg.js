@@ -1,5 +1,7 @@
 const express = require('express');
 const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
 const KomregController = require('../controllers/komregController');
 const router = express.Router();
 
@@ -16,9 +18,15 @@ const storage = multer.diskStorage({
     cb(null, uniqueName);
   }
 });
-const upload = multer({ storage });
+const upload = multer({ 
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB per file
+    files: 50 // Maksimal 50 files
+  }
+});
 
-router.post('/komreg/process', upload.array('images', 10), KomregController.processKomregImages);
-router.post('/api/komreg/process', upload.array('images', 10), KomregController.processKomregImages);
+// Ganti limit upload gambar dari 10 jadi 50
+router.post('/process', upload.array('images', 50), KomregController.processKomregImages);
 
 module.exports = router;
