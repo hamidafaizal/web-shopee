@@ -518,7 +518,7 @@
                 height: 80px;
             }
         }
-        
+
         @media (max-width: 600px) {
             nav {
                 flex-direction: column;
@@ -537,6 +537,178 @@
             .action-buttons {
                 flex-direction: column;
             }
+        }
+
+        /* === 1. Update Input Filter Komisi dan Button Apply Filter === */
+        #thresholdInput {
+            width: 200px !important;
+            min-width: 150px;
+            font-size: 16px;
+            padding: 12px 16px;
+            text-align: center;
+        }
+        #thresholdContainer button {
+            padding: 10px 20px !important;
+            font-size: 14px;
+            min-width: 120px;
+            width: auto !important;
+        }
+        #thresholdContainer > div {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        @media (max-width: 768px) {
+            #thresholdContainer > div {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            #thresholdInput {
+                width: 100% !important;
+            }
+        }
+
+        /* === 2. Redesign Hasil Analisa KOMREG === */
+        /* KOMREG Results Styling */
+        #komreg-resultsSection {
+            margin-top: 30px;
+        }
+        #komreg-resultsSection h3 {
+            color: #21cbf3;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #komreg-resultsSection h3::before {
+            content: "📊";
+            font-size: 24px;
+        }
+        .results-table {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        #komreg-resultsTable {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            color: white;
+        }
+        #komreg-resultsTable thead {
+            background: linear-gradient(135deg, #2196f3 0%, #21cbf3 100%);
+        }
+        #komreg-resultsTable th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: white !important;
+            text-transform: uppercase;
+            font-size: 14px;
+            letter-spacing: 1px;
+        }
+        #komreg-resultsTable th:first-child {
+            border-radius: 8px 0 0 0;
+            width: 30%;
+        }
+        #komreg-resultsTable th:last-child {
+            border-radius: 0 8px 0 0;
+        }
+        #komreg-resultsTable tbody tr {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        #komreg-resultsTable tbody tr:hover {
+            background: rgba(255, 255, 255, 0.08) !important;
+            transform: translateX(5px);
+        }
+        #komreg-resultsTable td {
+            padding: 12px 15px;
+            color: white !important;
+            background: transparent !important;
+        }
+        #komreg-resultsTable td:first-child {
+            font-weight: 500;
+            color: #21cbf3 !important;
+        }
+        /* Komisi value styling */
+        #komreg-resultsTable td:last-child {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        /* Color coding untuk komisi */
+        #komreg-resultsTable .high-commission {
+            color: #4caf50 !important;
+        }
+        #komreg-resultsTable .medium-commission {
+            color: #ffc107 !important;
+        }
+        #komreg-resultsTable .low-commission {
+            color: #ff9800 !important;
+        }
+        #komreg-resultsTable .no-commission {
+            color: #666 !important;
+            font-style: italic;
+        }
+        /* Summary stats */
+        .komreg-summary {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .komreg-stat {
+            flex: 1;
+            min-width: 150px;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .komreg-stat h4 {
+            margin: 0;
+            font-size: 24px;
+            color: #21cbf3;
+        }
+        .komreg-stat p {
+            margin: 5px 0 0;
+            opacity: 0.8;
+            font-size: 14px;
+        }
+
+        /* === 4. Additional Polish === */
+        /* Loading animation improvement */
+        #komreg-loadingOverlay {
+            backdrop-filter: blur(5px);
+        }
+        /* Smooth transitions */
+        .panel {
+            transition: all 0.3s ease;
+        }
+        /* Button hover effects */
+        button {
+            position: relative;
+            overflow: hidden;
+        }
+        button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        button:hover::before {
+            width: 300px;
+            height: 300px;
         }
     </style>
 </head>
@@ -697,6 +869,7 @@
                             </tr>
                         </thead>
                         <tbody id="komreg-resultsBody">
+                            <!-- Results will be inserted here -->
                         </tbody>
                     </table>
                 </div>
@@ -938,6 +1111,78 @@
             generateCopyButtons(filteredResults.length);
             // Check sync availability
             checkSyncAvailability();
+        }
+
+        // Update function displayResults di bagian KOMREG:
+        function displayResults(results) {
+            komregResults = results;
+            resultsBody.innerHTML = '';
+            
+            // Calculate statistics
+            let highCount = 0, mediumCount = 0, lowCount = 0, zeroCount = 0;
+            
+            results.forEach(result => {
+                const row = document.createElement('tr');
+                const komisiValue = parseFloat(result.komisi);
+
+                // Determine commission class
+                let commissionClass = '';
+                if (komisiValue === 0) {
+                    commissionClass = 'no-commission';
+                    zeroCount++;
+                } else if (komisiValue >= 10) {
+                    commissionClass = 'high-commission';
+                    highCount++;
+                } else if (komisiValue >= 5) {
+                    commissionClass = 'medium-commission';
+                    mediumCount++;
+                } else {
+                    commissionClass = 'low-commission';
+                    lowCount++;
+                }
+
+                row.innerHTML = `
+                    <td>Produk ${result.productNumber}</td>
+                    <td class="${commissionClass}">${result.komisi}</td>
+                `;
+                resultsBody.appendChild(row);
+            });
+
+            // Update atau tambahkan summary stats
+            const summaryHtml = `
+                <div class="komreg-summary">
+                    <div class="komreg-stat">
+                        <h4>${results.length}</h4>
+                        <p>Total Produk</p>
+                    </div>
+                    <div class="komreg-stat">
+                        <h4>${highCount}</h4>
+                        <p>Komisi Tinggi (≥10%)</p>
+                    </div>
+                    <div class="komreg-stat">
+                        <h4>${mediumCount}</h4>
+                        <p>Komisi Sedang (5-9%)</p>
+                    </div>
+                    <div class="komreg-stat">
+                        <h4>${lowCount}</h4>
+                        <p>Komisi Rendah (&lt;5%)</p>
+                    </div>
+                    <div class="komreg-stat">
+                        <h4>${zeroCount}</h4>
+                        <p>Tanpa Komisi</p>
+                    </div>
+                </div>
+            `;
+            // Insert summary before table
+            const existingSummary = resultsSection.querySelector('.komreg-summary');
+            if (existingSummary) {
+                existingSummary.remove();
+            }
+            resultsSection.insertAdjacentHTML('afterbegin', summaryHtml);
+
+            resultsSection.style.display = 'block';
+            checkSyncAvailability();
+            updateKomregTabIndicator();
         }
 
         // Function untuk check apakah bisa sync
@@ -1377,10 +1622,6 @@
             if (komregInitialized) return;
             komregInitialized = true;
 
-            // State management
-            let komregUploadedFiles = [];
-            let komregProcessedResults = [];
-
             // DOM Elements
             const uploadArea = document.getElementById('komreg-uploadArea');
             const fileInput = document.getElementById('komreg-fileInput');
@@ -1388,8 +1629,16 @@
             const clearBtn = document.getElementById('komreg-clearBtn');
             const processBtn = document.getElementById('komreg-processBtn');
             const resultsSection = document.getElementById('komreg-resultsSection');
-            const resultsBody = document.getElementById('komreg-resultsBody');
             const loadingOverlay = document.getElementById('komreg-loadingOverlay');
+
+            // Defensive: pastikan tbody ada
+            let resultsBody = document.getElementById('komreg-resultsBody');
+            if (!resultsBody) {
+                const table = document.getElementById('komreg-resultsTable');
+                resultsBody = document.createElement('tbody');
+                resultsBody.id = 'komreg-resultsBody';
+                table.appendChild(resultsBody);
+            }
 
             // Event Listeners
             uploadArea.addEventListener('click', () => fileInput.click());
@@ -1460,9 +1709,21 @@
 
             // Clear all images
             function clearAllImages() {
-                komregUploadedFiles = [];
-                imagePreview.innerHTML = '';
-                updateUI();
+                if (komregResults.length > 0) {
+                    if (confirm(`Anda memiliki ${komregResults.length} data komisi. Yakin ingin reset? Data akan hilang!`)) {
+                        komregUploadedFiles = [];
+                        imagePreview.innerHTML = '';
+                        komregResults = [];
+                        document.getElementById('komreg-resultsSection').style.display = 'none';
+                        updateKomregTabIndicator();
+                        checkSyncAvailability();
+                        updateUI();
+                    }
+                } else {
+                    komregUploadedFiles = [];
+                    imagePreview.innerHTML = '';
+                    updateUI();
+                }
             }
 
             // Refresh preview display
@@ -1510,27 +1771,90 @@
                 }
             }
 
-            // Display results
+            // Display results with enhanced styling
             function displayResults(results) {
-                komregResults = results; // Simpan hasil KOMREG ke global variable
+                komregResults = results; // Update global variable
                 resultsBody.innerHTML = '';
+                
+                // Calculate statistics
+                let highCount = 0, mediumCount = 0, lowCount = 0, zeroCount = 0;
+                
                 results.forEach(result => {
                     const row = document.createElement('tr');
+                    const komisiValue = parseFloat(result.komisi);
+                    
+                    // Determine commission class
+                    let commissionClass = '';
+                    if (komisiValue === 0) {
+                        commissionClass = 'no-commission';
+                        zeroCount++;
+                    } else if (komisiValue >= 10) {
+                        commissionClass = 'high-commission';
+                        highCount++;
+                    } else if (komisiValue >= 5) {
+                        commissionClass = 'medium-commission';
+                        mediumCount++;
+                    } else {
+                        commissionClass = 'low-commission';
+                        lowCount++;
+                    }
+                    
                     row.innerHTML = `
-                        <td>${result.productNumber}</td>
-                        <td>${result.komisi}</td>
+                        <td>Produk ${result.productNumber}</td>
+                        <td class="${commissionClass}">${result.komisi}</td>
                     `;
                     resultsBody.appendChild(row);
                 });
+                
+                // Remove existing summary if any
+                const existingSummary = resultsSection.querySelector('.komreg-summary');
+                if (existingSummary) {
+                    existingSummary.remove();
+                }
+                
+                // Add summary stats
+                const summaryHtml = `
+                    <div class="komreg-summary">
+                        <div class="komreg-stat">
+                            <h4>${results.length}</h4>
+                            <p>Total Produk</p>
+                        </div>
+                        <div class="komreg-stat">
+                            <h4>${highCount}</h4>
+                            <p>Komisi Tinggi (≥10%)</p>
+                        </div>
+                        <div class="komreg-stat">
+                            <h4>${mediumCount}</h4>
+                            <p>Komisi Sedang (5-9%)</p>
+                        </div>
+                        <div class="komreg-stat">
+                            <h4>${lowCount}</h4>
+                            <p>Komisi Rendah (&lt;5%)</p>
+                        </div>
+                        <div class="komreg-stat">
+                            <h4>${zeroCount}</h4>
+                            <p>Tanpa Komisi</p>
+                        </div>
+                    </div>
+                `;
+                
+                // Insert summary at the beginning of results section
+                resultsSection.insertAdjacentHTML('afterbegin', summaryHtml);
+                
                 resultsSection.style.display = 'block';
 
-                // Update global variable dan check sync
+                // Update global state
                 komregProcessedResults = results;
-                komregResults = results; // Update global
-                checkSyncAvailability(); // Check apakah bisa sync
+                checkSyncAvailability();
 
-                // Tambahkan info text setelah hasil analisa
+                // Add info text
+                const existingInfo = resultsSection.querySelector('.info-text');
+                if (existingInfo) {
+                    existingInfo.remove();
+                }
+                
                 const infoText = document.createElement('div');
+                infoText.className = 'info-text';
                 infoText.style.cssText = 'margin-top: 15px; padding: 15px; background: rgba(33,150,243,0.2); border-radius: 8px; text-align: center;';
                 infoText.innerHTML = `
                     <i class="bi bi-info-circle"></i> 
@@ -1539,7 +1863,7 @@
                 `;
                 resultsSection.appendChild(infoText);
 
-                // Update indikator tab KOMREG
+                // Update tab indicator
                 updateKomregTabIndicator();
             }
 
@@ -1685,6 +2009,8 @@
                 resultsSection.insertBefore(statusDiv, resultsSection.firstChild);
             }
         }
+
+        console.log('resultsBody:', document.getElementById('komreg-resultsBody'));
     </script>
 </body>
 </html>

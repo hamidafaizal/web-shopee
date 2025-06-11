@@ -20,29 +20,30 @@ function parseGeminiResponse(text) {
   const lines = text.split('\n').filter(line => line.trim());
   
   lines.forEach(line => {
-    // Cari pattern "Produk X: Y%" atau variasi lainnya
-    const match = line.match(/Produk\s*(\d+)\s*:\s*(\d+)%/i) || 
-                  line.match(/Produk\s*(\d+)\s*:\s*(\d+)\s*%/i) ||
-                  line.match(/Produk\s*(\d+)\s*:\s*Tidak ada/i);
+    // Pattern untuk menangkap berbagai format
+    const patterns = [
+      /Produk\s*(\d+)\s*:\s*(\d+(?:\.\d+)?)\s*%/i,  // Produk X: Y%
+      /Produk\s*(\d+)\s*:\s*(\d+(?:\.\d+)?)\%/i,     // Produk X: Y%
+      /Produk\s*(\d+)\s*:\s*0\s*%/i,                 // Produk X: 0%
+      /Produk\s*(\d+)\s*:\s*Tidak ada/i,             // Produk X: Tidak ada
+      /Produk\s*(\d+)\s*:\s*-/i                      // Produk X: -
+    ];
     
-    if (match) {
-      if (match[0].toLowerCase().includes('tidak ada')) {
-        results.push('Tidak ada');
-      } else if (match[2]) {
-        results.push(match[2] + '%');
+    for (const pattern of patterns) {
+      const match = line.match(pattern);
+      if (match) {
+        if (match[0].toLowerCase().includes('tidak ada') || match[0].includes('-')) {
+          results.push('0%');
+        } else if (match[2] !== undefined) {
+          results.push(match[2] + '%');
+        } else {
+          results.push('0%');
+        }
+        break;
       }
     }
   });
   
-  // Jika parsing gagal, coba cari angka dengan %
-  if (results.length === 0) {
-    const percentMatches = text.matchAll(/(\d+)%/g);
-    for (const match of percentMatches) {
-      results.push(match[1] + '%');
-    }
-  }
-  
-  console.log('Parsed results:', results); // Untuk debugging
   return results;
 }
 
@@ -63,21 +64,23 @@ exports.processKomregImages = async (req, res) => {
       const imagePath = file.path;
       try {
         const imagePart = fileToGenerativePart(imagePath, file.mimetype);
+
+        // Ganti prompt dengan instruksi baru:
         const prompt = `Analisa screenshot produk Shopee ini.
 
-PERHATIKAN:
-1. Setiap produk memiliki gambar produk di sebelah kiri
-2. Informasi komisi terletak di bawah nama produk, dengan format:
-   - "Komisi hingga X%" (teks oranye)
-   - Badge "KOMISIXTRA" biasanya muncul bersamaan
-3. Format harga dalam Rupiah (Rp)
-4. Ada informasi terjual di sebelah kanan
+CARA MEMBACA KOMISI:
+1. Temukan CHECKLIST ORANYE (✓) di sebelah KIRI setiap produk
+2. Dari checklist, lihat SEJAJAR KE KANAN untuk menemukan area informasi produk
+3. Di area informasi produk, cari:
+   - Teks "Komisi hingga X%" (warna oranye, posisi DI ATAS harga)
+   - Harga "RpXXX" (warna oranye, posisi DI BAWAH komisi)
+4. Jika tidak ada teks "Komisi hingga X%" = komisi 0%
 
-INSTRUKSI:
-- Identifikasi SEMUA produk dalam screenshot
-- Baca nilai komisi yang tertulis "Komisi hingga X%"
-- Jika tidak ada teks "Komisi hingga", berarti produk tersebut tidak ada komisi
-- Hitung produk dari ATAS ke BAWAH
+PENTING:
+- Abaikan nama produk dan deskripsi
+- Fokus pada: checklist → sejajar kanan → cari komisi di atas harga
+- SETIAP produk dengan checklist oranye HARUS dihitung
+- Produk terpotong tetap hitung (komisi 0% jika info tidak terlihat)
 
 Format jawaban WAJIB:
 Produk 1: [nilai]%
@@ -85,25 +88,36 @@ Produk 2: [nilai]%
 Produk 3: [nilai]%
 (dan seterusnya untuk semua produk yang terlihat)
 
-Contoh berdasarkan yang terlihat:
-Produk 1: 17%
-Produk 2: 3%
-Produk 3: 8%
-Produk 4: 1%
+Jika produk tidak memiliki komisi, tulis:
+Produk X: 0%
 
 Sekarang analisa screenshot ini:`;
 
-        const result = await model.generateContent([prompt, imagePart]);
-        const response = await result.response;
-        const text = response.text();
-        const products = parseGeminiResponse(text);
+        // Retry logic jika parsing gagal
+        let attempts = 0;
+        let products = [];
+        while (attempts < 2 && products.length === 0) {
+          const result = await model.generateContent([prompt, imagePart]);
+          const response = await result.response;
+          const text = response.text();
+          products = parseGeminiResponse(text);
+          attempts++;
+        }
 
-        products.forEach(commission => {
+        // Validasi minimal 1 produk
+        if (products.length === 0) {
           results.push({
             productNumber: productNumber++,
-            komisi: commission
+            komisi: '0%'
           });
-        });
+        } else {
+          products.forEach(commission => {
+            results.push({
+              productNumber: productNumber++,
+              komisi: commission || '0%'  // Default 0% jika undefined
+            });
+          });
+        }
 
       } catch (error) {
         results.push({
