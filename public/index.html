@@ -596,7 +596,6 @@
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
-            color: white;
         }
         #komreg-resultsTable thead {
             background: linear-gradient(135deg, #2196f3 0%, #21cbf3 100%);
@@ -609,13 +608,7 @@
             text-transform: uppercase;
             font-size: 14px;
             letter-spacing: 1px;
-        }
-        #komreg-resultsTable th:first-child {
-            border-radius: 8px 0 0 0;
-            width: 30%;
-        }
-        #komreg-resultsTable th:last-child {
-            border-radius: 0 8px 0 0;
+            background: transparent !important;
         }
         #komreg-resultsTable tbody tr {
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -629,17 +622,21 @@
             padding: 12px 15px;
             color: white !important;
             background: transparent !important;
+            border: none !important;
         }
-        #komreg-resultsTable td:first-child {
-            font-weight: 500;
-            color: #21cbf3 !important;
+        /* Override any conflicting styles */
+        .results-table {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        /* Komisi value styling */
-        #komreg-resultsTable td:last-child {
-            font-weight: 600;
-            font-size: 16px;
+        /* Ensure table text is visible */
+        #komreg-resultsSection * {
+            color: white !important;
         }
-        /* Color coding untuk komisi */
+        /* Except for color-coded commission values */
         #komreg-resultsTable .high-commission {
             color: #4caf50 !important;
         }
@@ -938,6 +935,10 @@
         let filteredResults = [];
         let komregResults = []; // Untuk menyimpan hasil KOMREG
         let syncedResults = []; // Untuk menyimpan hasil sync
+
+        // KOMREG variables
+        let komregUploadedFiles = [];
+        let komregProcessedResults = [];
         
         // Tab navigation
         const tabs = document.querySelectorAll('.tab-btn');
@@ -1111,78 +1112,6 @@
             generateCopyButtons(filteredResults.length);
             // Check sync availability
             checkSyncAvailability();
-        }
-
-        // Update function displayResults di bagian KOMREG:
-        function displayResults(results) {
-            komregResults = results;
-            resultsBody.innerHTML = '';
-            
-            // Calculate statistics
-            let highCount = 0, mediumCount = 0, lowCount = 0, zeroCount = 0;
-            
-            results.forEach(result => {
-                const row = document.createElement('tr');
-                const komisiValue = parseFloat(result.komisi);
-
-                // Determine commission class
-                let commissionClass = '';
-                if (komisiValue === 0) {
-                    commissionClass = 'no-commission';
-                    zeroCount++;
-                } else if (komisiValue >= 10) {
-                    commissionClass = 'high-commission';
-                    highCount++;
-                } else if (komisiValue >= 5) {
-                    commissionClass = 'medium-commission';
-                    mediumCount++;
-                } else {
-                    commissionClass = 'low-commission';
-                    lowCount++;
-                }
-
-                row.innerHTML = `
-                    <td>Produk ${result.productNumber}</td>
-                    <td class="${commissionClass}">${result.komisi}</td>
-                `;
-                resultsBody.appendChild(row);
-            });
-
-            // Update atau tambahkan summary stats
-            const summaryHtml = `
-                <div class="komreg-summary">
-                    <div class="komreg-stat">
-                        <h4>${results.length}</h4>
-                        <p>Total Produk</p>
-                    </div>
-                    <div class="komreg-stat">
-                        <h4>${highCount}</h4>
-                        <p>Komisi Tinggi (≥10%)</p>
-                    </div>
-                    <div class="komreg-stat">
-                        <h4>${mediumCount}</h4>
-                        <p>Komisi Sedang (5-9%)</p>
-                    </div>
-                    <div class="komreg-stat">
-                        <h4>${lowCount}</h4>
-                        <p>Komisi Rendah (&lt;5%)</p>
-                    </div>
-                    <div class="komreg-stat">
-                        <h4>${zeroCount}</h4>
-                        <p>Tanpa Komisi</p>
-                    </div>
-                </div>
-            `;
-            // Insert summary before table
-            const existingSummary = resultsSection.querySelector('.komreg-summary');
-            if (existingSummary) {
-                existingSummary.remove();
-            }
-            resultsSection.insertAdjacentHTML('afterbegin', summaryHtml);
-
-            resultsSection.style.display = 'block';
-            checkSyncAvailability();
-            updateKomregTabIndicator();
         }
 
         // Function untuk check apakah bisa sync
