@@ -378,6 +378,20 @@
         .btn-danger {
             background: linear-gradient(to right, #f44336, #e91e63) !important;
         }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-bar div {
+            height: 100%;
+            width: 0;
+            background: linear-gradient(to right, #2196f3, #21cbf3);
+            transition: width 0.3s ease;
+        }
         
         /* === KOMREG ONLY: Image Preview & Upload Area === */
         #komreg-uploadArea {
@@ -841,7 +855,7 @@
                 <h3>Upload Gambar</h3>
                 <div class="upload-area" id="komreg-uploadArea">
                     <p>Drag & drop gambar ke sini atau klik untuk memilih</p>
-                    <input type="file" id="komreg-fileInput" multiple accept="image/*" hidden>
+                    <input type="file" id="komreg-fileInput" accept="image/*" hidden>
                 </div>
                 <div class="image-preview" id="komreg-imagePreview"></div>
                 <!-- Ganti bagian action-buttons di KOMREG -->
@@ -850,6 +864,12 @@
                         <i class="bi bi-trash"></i> Reset Data
                     </button>
                     <button id="komreg-processBtn" class="btn btn-primary">Proses Analisa</button>
+                </div>
+                <div id="komreg-progressContainer" style="display:none; margin-top:20px;">
+                    <div class="progress-bar">
+                        <div id="komreg-progressFill"></div>
+                    </div>
+                    <div id="komreg-progressText" style="text-align:center; margin-top:5px; font-size:14px;"></div>
                 </div>
                 <!-- Hapus atau comment tombol Hapus Semua -->
                 <!-- <button id="komreg-clearBtn" class="btn btn-secondary">Hapus Semua</button> -->
@@ -935,6 +955,15 @@
         let filteredResults = [];
         let komregResults = []; // Untuk menyimpan hasil KOMREG
         let syncedResults = []; // Untuk menyimpan hasil sync
+
+        // Progress state for KOMREG
+        let komregState = {
+            currentBatch: 1,
+            ssUploaded: 0,
+            totalSsNeeded: 25
+        };
+
+        let komregProcessing = false;
 
         // KOMREG variables
         let komregUploadedFiles = [];
@@ -1092,6 +1121,9 @@
             if (!filteredResults || filteredResults.length === 0) {
                 filteredResults = result.results;
             }
+
+            komregState.totalSsNeeded = Math.ceil(filteredResults.length / 4);
+            updateKomregProgress();
             
             const tbody = document.getElementById('resultTableBody');
             tbody.innerHTML = filteredResults.map((item, index) => `
@@ -1594,12 +1626,14 @@
                 uploadArea.classList.remove('dragover');
                 const files = Array.from(e.dataTransfer.files);
                 handleFiles(files);
+                processImages();
             }
 
             // File selection handler
             function handleFileSelect(e) {
                 const files = Array.from(e.target.files);
                 handleFiles(files);
+                processImages();
             }
 
             // Process selected files
@@ -1646,11 +1680,15 @@
                         document.getElementById('komreg-resultsSection').style.display = 'none';
                         updateKomregTabIndicator();
                         checkSyncAvailability();
+                        komregState.ssUploaded = 0;
+                        updateKomregProgress();
                         updateUI();
                     }
                 } else {
                     komregUploadedFiles = [];
                     imagePreview.innerHTML = '';
+                    komregState.ssUploaded = 0;
+                    updateKomregProgress();
                     updateUI();
                 }
             }
@@ -1665,39 +1703,51 @@
 
             // Update UI state
             function updateUI() {
-                processBtn.disabled = komregUploadedFiles.length === 0;
-                clearBtn.disabled = komregUploadedFiles.length === 0;
+                processBtn.disabled = komregUploadedFiles.length === 0 || komregProcessing;
+                clearBtn.disabled = komregUploadedFiles.length === 0 && komregResults.length === 0;
+                const progressContainer = document.getElementById('komreg-progressContainer');
+                if (komregState.ssUploaded > 0 || komregProcessing) {
+                    progressContainer.style.display = 'block';
+                } else {
+                    progressContainer.style.display = 'none';
+                }
             }
 
             // Process images
             async function processImages() {
-                if (komregUploadedFiles.length === 0) {
-                    alert('Silakan upload gambar terlebih dahulu');
+                if (komregProcessing || komregUploadedFiles.length === 0) {
                     return;
                 }
-                showLoading(true);
-                try {
-                    const formData = new FormData();
-                    komregUploadedFiles.forEach(file => {
+                komregProcessing = true;
+                updateUI();
+                while (komregUploadedFiles.length > 0) {
+                    showLoading(true);
+                    const file = komregUploadedFiles.shift();
+                    refreshPreviews();
+                    try {
+                        const formData = new FormData();
                         formData.append('images', file);
-                    });
-                    const response = await fetch('/api/process', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const data = await response.json();
-                    if (data.success) {
-                        komregProcessedResults = data.results;
-                        displayResults(data.results);
-                    } else {
-                        alert('Error: ' + (data.error || 'Terjadi kesalahan'));
+                        const response = await fetch('/api/process', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await response.json();
+                        if (data.success) {
+                            appendKomregResults(data.results);
+                        } else {
+                            alert('Error: ' + (data.error || 'Terjadi kesalahan'));
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('Terjadi kesalahan saat memproses gambar');
+                    } finally {
+                        showLoading(false);
+                        komregState.ssUploaded++;
+                        updateKomregProgress();
                     }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('Terjadi kesalahan saat memproses gambar');
-                } finally {
-                    showLoading(false);
                 }
+                komregProcessing = false;
+                updateUI();
             }
 
             // Display results with enhanced styling
@@ -1794,7 +1844,28 @@
 
                 // Update tab indicator
                 updateKomregTabIndicator();
+                updateKomregStatus();
+                updateKomregProgress();
             }
+
+            function appendKomregResults(results) {
+                if (komregResults.length === 0) {
+                    displayResults(results);
+                    return;
+                }
+                results.forEach(res => {
+                    res.productNumber = komregResults.length + 1;
+                    komregResults.push(res);
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>Produk ${res.productNumber}</td><td>${res.komisi}</td>`;
+                    resultsBody.appendChild(row);
+                });
+                resultsSection.style.display = 'block';
+                updateKomregTabIndicator();
+                checkSyncAvailability();
+                updateKomregStatus();
+            }
+
 
             // Show/hide loading overlay
             function showLoading(show) {
@@ -1807,6 +1878,7 @@
 
             // Init UI
             updateUI();
+            updateKomregProgress();
         }
 
         // Trigger inisialisasi saat tab KOMREG diklik
@@ -1909,6 +1981,8 @@
                     updateKomregTabIndicator();
                     checkSyncAvailability();
                     updateKomregStatus();
+                    komregState.ssUploaded = 0;
+                    updateKomregProgress();
                 }
             } else {
                 clearAllImages();
@@ -1937,6 +2011,12 @@
                 statusDiv.innerHTML = statusHtml;
                 resultsSection.insertBefore(statusDiv, resultsSection.firstChild);
             }
+        }
+
+        function updateKomregProgress() {
+            const percent = Math.min(100, Math.round((komregState.ssUploaded / komregState.totalSsNeeded) * 100));
+            document.getElementById('komreg-progressFill').style.width = percent + '%';
+            document.getElementById('komreg-progressText').textContent = `${percent}% (${komregState.ssUploaded}/${komregState.totalSsNeeded} SS)`;
         }
 
         console.log('resultsBody:', document.getElementById('komreg-resultsBody'));
