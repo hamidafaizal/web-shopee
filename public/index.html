@@ -849,52 +849,68 @@
 
         <!-- KOMREG Panel -->
         <div class="panel" id="komreg">
-            <h2><i class="bi bi-collection"></i> KOMREG</h2>
+            <h2><i class="bi bi-collection"></i> KOMREG - Analisa Komisi</h2>
+
+            <!-- Progress Section -->
+            <div id="komreg-progressSection" style="margin-bottom: 20px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 10px;">
+                <h3 style="margin-bottom: 15px;">📊 Progress Batch <span id="komreg-currentBatch">1</span></h3>
+                <div class="progress-bar" style="margin-bottom: 15px;">
+                    <div id="komreg-progressFill"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span id="komreg-progressText">0% (0/25 SS)</span>
+                    <span id="komreg-linkRange">Link 1-100</span>
+                </div>
+                <div style="background: rgba(33,150,243,0.2); padding: 15px; border-radius: 8px; margin-top: 15px;">
+                    <h4>⚡ Quick Guide:</h4>
+                    <ul style="list-style: none; margin-top: 10px;">
+                        <li>• 1 Screenshot = 4 produk</li>
+                        <li>• Total dibutuhkan: <span id="komreg-totalSs">25</span> SS</li>
+                        <li>• Upload berikutnya: <strong>Produk <span id="komreg-nextProducts">1-4</span></strong></li>
+                    </ul>
+                </div>
+            </div>
+
             <!-- Upload Section -->
             <section class="upload-section">
-                <h3>Upload Gambar</h3>
-                <div class="upload-area" id="komreg-uploadArea">
-                    <p>Drag & drop gambar ke sini atau klik untuk memilih</p>
+                <h3>Upload Screenshot ke-<span id="komreg-currentSs">1</span></h3>
+                <div class="upload-area" id="komreg-uploadArea" style="border: 3px dashed #21cbf3;">
+                    <i class="bi bi-camera" style="font-size: 48px;"></i>
+                    <p>Drop screenshot untuk produk <span id="komreg-productRange">1-4</span></p>
                     <input type="file" id="komreg-fileInput" accept="image/*" hidden>
                 </div>
-                <div class="image-preview" id="komreg-imagePreview"></div>
-                <!-- Ganti bagian action-buttons di KOMREG -->
-                <div class="action-buttons">
-                    <button id="komreg-clearBtn" class="btn btn-danger" onclick="confirmClearKomreg()">
-                        <i class="bi bi-trash"></i> Reset Data
-                    </button>
-                    <button id="komreg-processBtn" class="btn btn-primary">Proses Analisa</button>
-                </div>
-                <div id="komreg-progressContainer" style="display:none; margin-top:20px;">
-                    <div class="progress-bar">
-                        <div id="komreg-progressFill"></div>
+                <!-- Visual Upload History -->
+                <div id="komreg-uploadHistory" style="margin-top: 20px;">
+                    <h4>✅ Uploaded Screenshots:</h4>
+                    <div id="komreg-historyGrid" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+                        <!-- SS indicators will be added here -->
                     </div>
-                    <div id="komreg-progressText" style="text-align:center; margin-top:5px; font-size:14px;"></div>
                 </div>
-                <!-- Hapus atau comment tombol Hapus Semua -->
-                <!-- <button id="komreg-clearBtn" class="btn btn-secondary">Hapus Semua</button> -->
             </section>
+
             <!-- Results Section -->
-            <section class="results-section" id="komreg-resultsSection" style="display: none;">
-                <h3>Hasil Analisa</h3>
+            <section class="results-section" id="komreg-resultsSection">
+                <h3>Hasil Analisa Real-time</h3>
                 <div class="results-table">
                     <table id="komreg-resultsTable">
                         <thead>
                             <tr>
                                 <th>No Produk</th>
+                                <th>Link Produk</th>
                                 <th>Komisi</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
-                        <tbody id="komreg-resultsBody">
-                            <!-- Results will be inserted here -->
-                        </tbody>
+                        <tbody id="komreg-resultsBody"></tbody>
                     </table>
                 </div>
             </section>
-            <!-- Loading Overlay -->
-            <div class="loading-overlay" id="komreg-loadingOverlay">
-                <div class="spinner"></div>
-                <p>Sedang memproses gambar...</p>
+
+            <!-- Batch Complete Modal -->
+            <div id="komreg-batchComplete" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); padding: 30px; border-radius: 10px; z-index: 1000;">
+                <h3>🎉 Batch <span id="komreg-completedBatch">1</span> Selesai!</h3>
+                <p>100 link telah dianalisa dan di-sync otomatis.</p>
+                <button onclick="startNextBatch()">Lanjut Batch <span id="komreg-nextBatch">2</span></button>
             </div>
         </div>
 
@@ -959,8 +975,13 @@
         // Progress state for KOMREG
         let komregState = {
             currentBatch: 1,
+            totalBatches: 0,
+            currentProductIndex: 1,
             ssUploaded: 0,
-            totalSsNeeded: 25
+            totalSsNeeded: 0,
+            batchProgress: {},
+            isProcessing: false,
+            autoSyncEnabled: true
         };
 
         let komregProcessing = false;
@@ -1583,302 +1604,89 @@
             if (komregInitialized) return;
             komregInitialized = true;
 
-            // DOM Elements
             const uploadArea = document.getElementById('komreg-uploadArea');
             const fileInput = document.getElementById('komreg-fileInput');
-            const imagePreview = document.getElementById('komreg-imagePreview');
-            const clearBtn = document.getElementById('komreg-clearBtn');
-            const processBtn = document.getElementById('komreg-processBtn');
-            const resultsSection = document.getElementById('komreg-resultsSection');
-            const loadingOverlay = document.getElementById('komreg-loadingOverlay');
-
-            // Defensive: pastikan tbody ada
-            let resultsBody = document.getElementById('komreg-resultsBody');
-            if (!resultsBody) {
-                const table = document.getElementById('komreg-resultsTable');
-                resultsBody = document.createElement('tbody');
-                resultsBody.id = 'komreg-resultsBody';
-                table.appendChild(resultsBody);
-            }
-
-            // Event Listeners
+            
+            // Event handlers
             uploadArea.addEventListener('click', () => fileInput.click());
             uploadArea.addEventListener('dragover', handleDragOver);
             uploadArea.addEventListener('dragleave', handleDragLeave);
             uploadArea.addEventListener('drop', handleDrop);
             fileInput.addEventListener('change', handleFileSelect);
-            clearBtn.addEventListener('click', clearAllImages);
-            processBtn.addEventListener('click', processImages);
 
-            // Drag and Drop handlers
-            function handleDragOver(e) {
-                e.preventDefault();
-                uploadArea.classList.add('dragover');
+            // Initialize progress based on filtered results
+            if (filteredResults.length > 0) {
+                komregState.totalSsNeeded = Math.ceil(filteredResults.length / 4);
+                komregState.totalBatches = Math.ceil(filteredResults.length / 100);
+                updateKomregProgress();
+                updateProductRange();
             }
 
-            function handleDragLeave(e) {
-                e.preventDefault();
-                uploadArea.classList.remove('dragover');
+            function handleFileSelect(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    processIncrementalUpload(file);
+                }
             }
 
             function handleDrop(e) {
                 e.preventDefault();
                 uploadArea.classList.remove('dragover');
-                const files = Array.from(e.dataTransfer.files);
-                handleFiles(files);
-                processImages();
-            }
-
-            // File selection handler
-            function handleFileSelect(e) {
-                const files = Array.from(e.target.files);
-                handleFiles(files);
-                processImages();
-            }
-
-            // Process selected files
-            function handleFiles(files) {
-                const imageFiles = files.filter(file => file.type.startsWith('image/'));
-                imageFiles.forEach(file => {
-                    komregUploadedFiles.push(file);
-                    displayPreview(file, komregUploadedFiles.length);
-                });
-                updateUI();
-            }
-
-            // Display image preview
-            function displayPreview(file, orderNumber) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const previewItem = document.createElement('div');
-                    previewItem.className = 'preview-item';
-                    previewItem.dataset.index = orderNumber - 1;
-                    previewItem.innerHTML = `
-                        <img src="${e.target.result}" alt="Preview ${orderNumber}">
-                        <button class="remove-btn" onclick="window.komregRemoveImage(${orderNumber - 1})">×</button>
-                        <span class="order-number">${orderNumber}</span>
-                    `;
-                    imagePreview.appendChild(previewItem);
-                };
-                reader.readAsDataURL(file);
-            }
-
-            // Remove single image (expose to window for inline onclick)
-            window.komregRemoveImage = function(index) {
-                komregUploadedFiles.splice(index, 1);
-                refreshPreviews();
-                updateUI();
-            };
-
-            // Clear all images
-            function clearAllImages() {
-                if (komregResults.length > 0) {
-                    if (confirm(`Anda memiliki ${komregResults.length} data komisi. Yakin ingin reset? Data akan hilang!`)) {
-                        komregUploadedFiles = [];
-                        imagePreview.innerHTML = '';
-                        komregResults = [];
-                        document.getElementById('komreg-resultsSection').style.display = 'none';
-                        updateKomregTabIndicator();
-                        checkSyncAvailability();
-                        komregState.ssUploaded = 0;
-                        updateKomregProgress();
-                        updateUI();
-                    }
-                } else {
-                    komregUploadedFiles = [];
-                    imagePreview.innerHTML = '';
-                    komregState.ssUploaded = 0;
-                    updateKomregProgress();
-                    updateUI();
+                const file = e.dataTransfer.files[0];
+                if (file) {
+                    processIncrementalUpload(file);
                 }
             }
 
-            // Refresh preview display
-            function refreshPreviews() {
-                imagePreview.innerHTML = '';
-                komregUploadedFiles.forEach((file, index) => {
-                    displayPreview(file, index + 1);
-                });
-            }
-
-            // Update UI state
-            function updateUI() {
-                processBtn.disabled = komregUploadedFiles.length === 0 || komregProcessing;
-                clearBtn.disabled = komregUploadedFiles.length === 0 && komregResults.length === 0;
-                const progressContainer = document.getElementById('komreg-progressContainer');
-                if (komregState.ssUploaded > 0 || komregProcessing) {
-                    progressContainer.style.display = 'block';
-                } else {
-                    progressContainer.style.display = 'none';
-                }
-            }
-
-            // Process images
-            async function processImages() {
-                if (komregProcessing || komregUploadedFiles.length === 0) {
-                    return;
-                }
-                komregProcessing = true;
-                updateUI();
-                while (komregUploadedFiles.length > 0) {
-                    showLoading(true);
-                    const file = komregUploadedFiles.shift();
-                    refreshPreviews();
-                    try {
-                        const formData = new FormData();
-                        formData.append('images', file);
-                        const response = await fetch('/api/process', {
-                            method: 'POST',
-                            body: formData
-                        });
-                        const data = await response.json();
-                        if (data.success) {
-                            appendKomregResults(data.results);
-                        } else {
-                            alert('Error: ' + (data.error || 'Terjadi kesalahan'));
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                        alert('Terjadi kesalahan saat memproses gambar');
-                    } finally {
-                        showLoading(false);
+            async function processIncrementalUpload(file) {
+                if (komregState.isProcessing) return;
+                
+                komregState.isProcessing = true;
+                showLoading(true);
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('images', file);
+                    formData.append('productStart', komregState.currentProductIndex);
+                    
+                    const response = await fetch('/api/process-incremental', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // Process results
+                        appendIncrementalResults(data.results);
+                        
+                        // Update progress
                         komregState.ssUploaded++;
+                        komregState.currentProductIndex += data.results.length;
+                        
+                        // Auto-sync if enabled
+                        if (komregState.autoSyncEnabled) {
+                            await autoSyncResults(data.results);
+                        }
+                        
+                        // Update UI
                         updateKomregProgress();
+                        updateProductRange();
+                        addUploadedIndicator(komregState.ssUploaded);
+                        
+                        // Check if batch complete
+                        if (komregState.currentProductIndex > komregState.currentBatch * 100) {
+                            showBatchComplete();
+                        }
                     }
-                }
-                komregProcessing = false;
-                updateUI();
-            }
-
-            // Display results with enhanced styling
-            function displayResults(results) {
-                komregResults = results; // Update global variable
-                resultsBody.innerHTML = '';
-                
-                // Calculate statistics
-                let highCount = 0, mediumCount = 0, lowCount = 0, zeroCount = 0;
-                
-                results.forEach(result => {
-                    const row = document.createElement('tr');
-                    const komisiValue = parseFloat(result.komisi);
-                    
-                    // Determine commission class
-                    let commissionClass = '';
-                    if (komisiValue === 0) {
-                        commissionClass = 'no-commission';
-                        zeroCount++;
-                    } else if (komisiValue >= 10) {
-                        commissionClass = 'high-commission';
-                        highCount++;
-                    } else if (komisiValue >= 5) {
-                        commissionClass = 'medium-commission';
-                        mediumCount++;
-                    } else {
-                        commissionClass = 'low-commission';
-                        lowCount++;
-                    }
-                    
-                    row.innerHTML = `
-                        <td>Produk ${result.productNumber}</td>
-                        <td class="${commissionClass}">${result.komisi}</td>
-                    `;
-                    resultsBody.appendChild(row);
-                });
-                
-                // Remove existing summary if any
-                const existingSummary = resultsSection.querySelector('.komreg-summary');
-                if (existingSummary) {
-                    existingSummary.remove();
-                }
-                
-                // Add summary stats
-                const summaryHtml = `
-                    <div class="komreg-summary">
-                        <div class="komreg-stat">
-                            <h4>${results.length}</h4>
-                            <p>Total Produk</p>
-                        </div>
-                        <div class="komreg-stat">
-                            <h4>${highCount}</h4>
-                            <p>Komisi Tinggi (≥10%)</p>
-                        </div>
-                        <div class="komreg-stat">
-                            <h4>${mediumCount}</h4>
-                            <p>Komisi Sedang (5-9%)</p>
-                        </div>
-                        <div class="komreg-stat">
-                            <h4>${lowCount}</h4>
-                            <p>Komisi Rendah (&lt;5%)</p>
-                        </div>
-                        <div class="komreg-stat">
-                            <h4>${zeroCount}</h4>
-                            <p>Tanpa Komisi</p>
-                        </div>
-                    </div>
-                `;
-                
-                // Insert summary at the beginning of results section
-                resultsSection.insertAdjacentHTML('afterbegin', summaryHtml);
-                
-                resultsSection.style.display = 'block';
-
-                // Update global state
-                komregProcessedResults = results;
-                checkSyncAvailability();
-
-                // Add info text
-                const existingInfo = resultsSection.querySelector('.info-text');
-                if (existingInfo) {
-                    existingInfo.remove();
-                }
-                
-                const infoText = document.createElement('div');
-                infoText.className = 'info-text';
-                infoText.style.cssText = 'margin-top: 15px; padding: 15px; background: rgba(33,150,243,0.2); border-radius: 8px; text-align: center;';
-                infoText.innerHTML = `
-                    <i class="bi bi-info-circle"></i> 
-                    <strong>Data tersimpan!</strong> 
-                    Silakan kembali ke tab "Upload File Riset" untuk melakukan Sync.
-                `;
-                resultsSection.appendChild(infoText);
-
-                // Update tab indicator
-                updateKomregTabIndicator();
-                updateKomregStatus();
-                updateKomregProgress();
-            }
-
-            function appendKomregResults(results) {
-                if (komregResults.length === 0) {
-                    displayResults(results);
-                    return;
-                }
-                results.forEach(res => {
-                    res.productNumber = komregResults.length + 1;
-                    komregResults.push(res);
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<td>Produk ${res.productNumber}</td><td>${res.komisi}</td>`;
-                    resultsBody.appendChild(row);
-                });
-                resultsSection.style.display = 'block';
-                updateKomregTabIndicator();
-                checkSyncAvailability();
-                updateKomregStatus();
-            }
-
-
-            // Show/hide loading overlay
-            function showLoading(show) {
-                if (show) {
-                    loadingOverlay.classList.add('active');
-                } else {
-                    loadingOverlay.classList.remove('active');
+                } catch (error) {
+                    showAlert('danger', 'Error: ' + error.message);
+                } finally {
+                    komregState.isProcessing = false;
+                    showLoading(false);
+                    fileInput.value = ''; // Reset input
                 }
             }
-
-            // Init UI
-            updateUI();
-            updateKomregProgress();
         }
 
         // Trigger inisialisasi saat tab KOMREG diklik
@@ -2014,12 +1822,86 @@
         }
 
         function updateKomregProgress() {
-            const percent = Math.min(100, Math.round((komregState.ssUploaded / komregState.totalSsNeeded) * 100));
-            document.getElementById('komreg-progressFill').style.width = percent + '%';
-            document.getElementById('komreg-progressText').textContent = `${percent}% (${komregState.ssUploaded}/${komregState.totalSsNeeded} SS)`;
+            const batchStart = (komregState.currentBatch - 1) * 100;
+            const batchEnd = komregState.currentBatch * 100;
+            const batchProgress = Math.min(100, ((komregState.currentProductIndex - batchStart - 1) / 100) * 100);
+            
+            document.getElementById('komreg-progressFill').style.width = batchProgress + '%';
+            document.getElementById('komreg-progressText').textContent = 
+                `${Math.round(batchProgress)}% (${komregState.ssUploaded}/${komregState.totalSsNeeded} SS)`;
+            document.getElementById('komreg-currentBatch').textContent = komregState.currentBatch;
+            document.getElementById('komreg-linkRange').textContent = `Link ${batchStart + 1}-${batchEnd}`;
+            document.getElementById('komreg-currentSs').textContent = komregState.ssUploaded + 1;
         }
 
-        console.log('resultsBody:', document.getElementById('komreg-resultsBody'));
+        function updateProductRange() {
+            const start = komregState.currentProductIndex;
+            const end = Math.min(start + 3, filteredResults.length);
+            
+            document.getElementById('komreg-nextProducts').textContent = `${start}-${end}`;
+            document.getElementById('komreg-productRange').textContent = `${start}-${end}`;
+        }
+
+        function appendIncrementalResults(results) {
+            const tbody = document.getElementById('komreg-resultsBody');
+            
+            results.forEach((result, index) => {
+                const productNum = komregState.currentProductIndex + index;
+                const link = filteredResults[productNum - 1];
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>Produk ${productNum}</td>
+                    <td style="color: #21cbf3;">${link ? link.link : 'N/A'}</td>
+                    <td class="${getCommissionClass(result.komisi)}">${result.komisi}</td>
+                    <td><span style="color: #4caf50;">✓ Synced</span></td>
+                `;
+                tbody.appendChild(row);
+                
+                // Add to global results
+                komregResults.push({
+                    productNumber: productNum,
+                    komisi: result.komisi,
+                    link: link ? link.link : null
+                });
+            });
+        }
+
+        async function autoSyncResults(results) {
+            // Auto-sync logic here
+            const startIdx = komregState.currentProductIndex - results.length;
+            
+            for (let i = 0; i < results.length; i++) {
+                const idx = startIdx + i;
+                if (syncedResults[idx]) {
+                    syncedResults[idx].komisi = results[i].komisi;
+                }
+            }
+        }
+
+        function addUploadedIndicator(ssNumber) {
+            const grid = document.getElementById('komreg-historyGrid');
+            const indicator = document.createElement('div');
+            indicator.style.cssText = `
+                width: 24px;
+                height: 24px;
+                background: linear-gradient(135deg, #4caf50 0%, #81c784 100%);
+                border-radius: 50%;
+                position: relative;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 14px;
+                color: white;
+                font-weight: bold;
+            `;
+            indicator.textContent = ssNumber;
+            
+            grid.appendChild(indicator);
+        }
+
+        // Initial call to update progress
+        updateKomregProgress();
     </script>
 </body>
 </html>
